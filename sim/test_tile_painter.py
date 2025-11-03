@@ -44,7 +44,7 @@ def convert_to_triangle(color, p1x, p1y, p2x, p2y, p3x, p3y, total_depth):
     return color * (2**112) + p1x * (2**96) + p1y * (2**80) + p2x * (2**64) + p2y * (2**48) + p3x * (2**32) + p3y * (2**16) + total_depth
 
 BRAM = [
-    convert_to_triangle(0xFF00, 0, 0, 20, 0, 10, 10, 50),
+    convert_to_triangle(0xFF00, 0, 0, 20, 10, 10, 30, 50),
     convert_to_triangle(63, 0, 0, 0, 10, 10, 10, 100),
 ]
 
