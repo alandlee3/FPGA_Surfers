@@ -11,6 +11,9 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
         // when active is high, this module will start going through all the triangles in the triangle bram
         // and modify all the pixels in the tile bram.
         input wire active,
+        
+        // when wipe is high, the module will begin wiping if it is in the DONE or RST state.
+        input wire wipe,
 
         input wire [$clog2(MAX_TRIANGLES)-1:0] num_triangles,
         input wire [8:0] x_offset, // x coord of the top left pixel of the current tile
@@ -83,6 +86,9 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
     logic [127:0] triangle_data;
     logic [TRIANGLE_BRAM_ADDR_WIDTH-1:0] triangle_index;
 
+    logic [8:0] x_wipe;
+    logic [7:0] y_wipe;
+
     assign bram_triangle_read_addr = triangle_index;
 
     typedef enum {
@@ -91,7 +97,8 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
         READING_NEW_TRIANGLE_2, // reading a new triangle from BRAMs, second cycle
         DONE_READING_TRIANGLE, // done reading new triangle, find triangle data and go to iteration.
       	ITERATING, // x_offset_reading, y_offset_reading are cycling.
-        DONE // done !!
+        DONE, // done !!
+        WIPE // currently wiping !!
     } tile_state_type;
     tile_state_type tile_state;
 
@@ -109,9 +116,9 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
         .pixel_data_out(writing_pixel_data)
     );
 
-    assign tile_bram_write_addr = y_offset_writing * 20 + x_offset_writing;
-    assign tile_bram_write_data = writing_pixel_data;
-    assign tile_bram_write_valid = writing_coords_valid;
+    assign tile_bram_write_addr = (tile_state == WIPE) ? (y_wipe * 20 + x_wipe) : (y_offset_writing * 20 + x_offset_writing);
+    assign tile_bram_write_data = (tile_state == WIPE) ? 32'hFFFF : writing_pixel_data;
+    assign tile_bram_write_valid = (tile_state == WIPE) ? 1 : writing_coords_valid;
 
     assign tile_bram_read_addr = y_offset_reading * 20 + x_offset_reading;
 
@@ -119,15 +126,22 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
         
         done <= 0;
 
-        if (!active || rst) begin
+        if ( !active || rst) begin
             tile_state <= RST;
 
             reading_coords_valid <= 0;
         end else if (tile_state == RST) begin
-            if (active) begin
-                triangle_index <= 0;
-
-                tile_state <= READING_NEW_TRIANGLE_1;
+            if (wipe) begin // wipe takes priority!
+                tile_state <= WIPE;
+                x_wipe <= 0;
+                y_wipe <= 0;
+            end else if (active) begin
+                if(num_triangles == 0) begin
+                    tile_state <= DONE;
+                end else begin
+                    triangle_index <= 0;
+                    tile_state <= READING_NEW_TRIANGLE_1;
+                end
             end
         end else if (tile_state == READING_NEW_TRIANGLE_1) begin
             tile_state <= READING_NEW_TRIANGLE_2;
@@ -166,6 +180,25 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
             end
         end else if(tile_state == DONE) begin
             done <= 1;
+
+            if (wipe) begin
+                tile_state <= WIPE;
+                x_wipe <= 0;
+                y_wipe <= 0;
+            end
+        end else if(tile_state == WIPE) begin
+            if (x_wipe < 19) begin
+                x_wipe <= x_wipe + 1;
+            end else begin
+                x_wipe <= 0;
+
+                // must cycle y_offset_reading from 0 to 44
+                if (y_wipe < 44) begin
+                    y_wipe <= y_wipe + 1;
+                end else begin
+                    tile_state <= DONE;
+                end
+            end
         end
     end
 

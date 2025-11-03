@@ -25,6 +25,7 @@ async def test_a(dut):
     dut._log.info("Holding reset...")
     dut.rst.value = 1
     dut.active.value = 0
+    dut.wipe.value = 0
 
     for i in range(2):
         await cycle(dut)
@@ -34,6 +35,15 @@ async def test_a(dut):
     dut.active.value = 1
     dut.rst.value = 0
 
+    for _ in range(10000):
+        await cycle(dut)
+    
+    print(TILE)
+    
+    dut._log.info("Wiping.....")
+
+    dut.wipe.value = 1
+    
     for _ in range(10000):
         await cycle(dut)
 
