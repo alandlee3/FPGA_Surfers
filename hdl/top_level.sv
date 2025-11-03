@@ -716,6 +716,275 @@ module top_level(
     assign led[3] = cr_init_valid;
     assign led[4] = cr_init_ready;
     //assign led[15:5] = 0;
+
+    ///////////////////////////////////////////////////////////////////////////////////////
+    // Alan and Rog code nomnomnomnomnom
+
+
+    ///////////////////////////////// TOP LEVEL FSM ///////////////////////////////////////
+
+    typedef enum {
+        RST,
+      	MAKING_TRIANGLES,
+      	PAINTING_TILES,
+      	WRITING_TO_DRAM,
+        WIPING_TILES
+    } tl_state;
+    tl_state top_level_state;
+
+    logic system_reset;
+    assign system_reset = btn[0];
+
+    //////////////////////////////////// TRIANGLE VARIABLES!!!!! /////////////////////////////
+
+    // there are 8, 1 for each tile painter yum yum
+
+    localparam MAX_TRIANGLES = 256;
+    localparam TRIANGLE_BRAM_ADDR_WIDTH = $clog2(MAX_TRIANGLES);
+
+    // TODO-2
+    logic [TRIANGLE_BRAM_ADDR_WIDTH-1:0] num_triangles;
+    
+    // TODO-2: wire these
+    logic [TRIANGLE_BRAM_ADDR_WIDTH-1:0] bram_triangle_in_addr;
+    logic [127:0] bram_triangle_in_data;
+    logic bram_triangle_valid;
+
+    // TODO-2
+    assign bram_triangle_valid = 0;
+
+    logic [TRIANGLE_BRAM_ADDR_WIDTH-1:0] bram_triangle_out_addr [2:0];
+
+    // IMPORTANT: this variable is 2 cycles delayed from bram_triangle_out_addr
+    logic [127:0] bram_triangle_out [2:0];
+
+    generate
+        genvar i;
+        for (i = 0; i < 8; i=i+1) begin
+            xilinx_true_dual_port_read_first_2_clock_ram #(
+                .RAM_WIDTH(128), //each triangle is 128 bits
+                .RAM_DEPTH(MAX_TRIANGLES))
+                // TODO-1: give INIT_FILE
+            triangle_bram (
+                .addra(bram_triangle_in_addr), // a is for writing in triangles!
+                .clka(clk_100mhz),
+                .wea(bram_triangle_valid),
+                .dina(bram_triangle_in_data),
+                .ena(1'b1),
+                .regcea(1'b1),
+                .rsta(system_reset),
+                .douta(), //never read from this side
+                .addrb(bram_triangle_out_addr[i]),// triangle lookup
+                .dinb(16'b0),
+                .clkb(clk_100mhz),
+                .web(1'b0),
+                .enb(1'b1),
+                .rstb(system_reset),
+                .regceb(1'b1),
+                .doutb(bram_triangle_out[i])
+            );
+        end
+    endgenerate
+
+    //////////////////////////////// TILE VARIABLES!!!!!! ////////////////////////////////////
+
+    // there are again 8 tile brams
+    // each bram is 20 x 45, for a total depth of 900
+
+    // pixel to write into the tile BRAMs. Used by tile painter
+    logic [9:0] tile_bram_pixel_in_addr [2:0];
+    logic tile_bram_pixel_in_valid [2:0];
+    logic [31:0] tile_bram_pixel_in_data [2:0];
+
+    // pixel to read out of the tile BRAMs. Used by BOTH TILE PAINTER AND DRAM WRITING!!!
+    logic [9:0] tile_bram_pixel_out_addr [2:0];
+    logic [31:0] tile_bram_pixel_out_data [2:0];
+
+    generate
+        genvar i;
+        for (i = 0; i < 8; i=i+1) begin
+            xilinx_true_dual_port_read_first_2_clock_ram #(
+                .RAM_WIDTH(32), //each pixel is 32 bits - 16 bits of color, 16 bits of depth
+                .RAM_DEPTH(900) // 20 x 45 tile
+            ) tile_bram (
+                .addra(tile_bram_pixel_in_addr[i]), // a is for writing in triangles!
+                .clka(clk_100mhz),
+                .wea(tile_bram_pixel_in_valid[i]),
+                .dina(tile_bram_pixel_in_data[i]),
+                .ena(1'b1),
+                .regcea(1'b1),
+                .rsta(system_reset),
+                .douta(), //never read from this side
+                .addrb(tile_bram_pixel_out_addr[i]),// triangle lookup
+                .dinb(16'b0),
+                .clkb(clk_100mhz),
+                .web(1'b0),
+                .enb(1'b1),
+                .rstb(system_reset),
+                .regceb(1'b1),
+                .doutb(tile_bram_pixel_out_data[i])
+            );
+        end
+    endgenerate
+
+    //////////////////////// TILE VARIABLES !!!!!! //////////////////////////
+
+    // Right now, all tile painters are considering the same x_coord and y_coord
+    // Note that we first read from the tile BRAM, then 2 cycles later we do the math with tile painter
+    // and 1 cycle after that, we do a write to it.
+    logic [8:0] x_coord_reading;
+    logic [7:0] y_coord_reading;
+    logic [8:0] x_coord_calculating;
+    logic [7:0] y_coord_calculating;
+    logic [8:0] x_coord_writing;
+    logic [7:0] y_coord_writing;
+
+    logic reading_coords_valid;
+    logic calculating_coords_valid;
+    logic writing_coords_valid;
+
+    logic [31:0] tile_in_pixel [2:0];
+
+    pipeline #(.WIDTH(9), .STAGES_NEEDED(2)) x_coord_pl_inst (
+        .clk(clk_100mhz),
+        .in(x_coord_reading),
+        .out(x_coord_calculating)
+    );
+
+    pipeline #(.WIDTH(8), .STAGES_NEEDED(2)) y_coord_pl_inst (
+        .clk(clk_100mhz),
+        .in(y_coord_reading),
+        .out(y_coord_calculating)
+    );
+
+    pipeline #(.WIDTH(1), .STAGES_NEEDED(2)) tile_reading_to_calc_valid_pl_inst (
+        .clk(clk_100mhz),
+        .in(reading_coords_valid),
+        .out(calculating_coords_valid)
+    );
+
+    logic [4:0] tile_index;
+    // tile = 20 x 45
+    // 320 x 180
+    // tile_state[4:1] = vertical row the tile is in (4 rows)
+    // tile_state[0] = left half or right half of row
+
+    logic [TRIANGLE_BRAM_ADDR_WIDTH-1:0] tile_triangle_index [2:0];
+    // the index of the triangle we're currently working on
+
+    logic [127:0] tile_triangle_data [2:0];
+    // the triangle that we're working on
+
+    typedef enum {
+        READING_NEW_TRIANGLE_1, // reading a new triangle from BRAMs, first cycle
+        READING_NEW_TRIANGLE_2, // reading a new triangle from BRAMs, second cycle
+      	ITERATING, // x_coord_reading, y_coord_reading are cycling.
+      	WAITING_TO_COMPLETE // x_coord_reading, y_coord_reading are done, but x_coord_writing, y_coord_writing are not.
+    } tile_state_type;
+    tile_state_type tile_state;
+
+    // we must wire x_coord_reading, y_coord_reading to all of the
+    // logic [9:0] tile_bram_pixel_out_addr [2:0];
+    always_comb begin
+        for(int i = 0; i < 8; i=i+1) begin
+            tile_bram_pixel_out_addr[i] = y_coord_reading * 20 + x_coord_reading;
+
+            // also wire the bram triangle index being read to tile_triangle_index
+            bram_triangle_out_addr[i] = tile_triangle_index[i];
+
+            tile_bram_pixel_in_addr[i] = y_coord_writing * 20 + x_coord_writing;
+            tile_bram_pixel_in_data[i] = writing_coords_valid
+            tile_bram_pixel_in_valid[i] = writing_coords_valid;
+        end
+    end
+    
+    generate
+        genvar i;
+        for(i=0; i < 8; i=i+1) begin
+            pixel_calculator pixel_calculator_inst(
+                .clk(clk_100mhz),
+                .rst(system_reset),
+                .xcoord_in(x_coord_calculating),
+                .ycoord_in(y_coord_calculating),
+                .pixel_data_in(tile_bram_pixel_out_data[i]),
+                .triangle(tile_triangle_data[i]),
+                .pixel_in_valid(calculating_coords_valid),
+                .xcoord_out(x_coord_writing),
+                .ycoord_out(y_coord_writing),
+                .pixel_out_valid(writing_coords_valid),
+                .pixel_data_out() // TODO-0
+            );
+        end
+    endgenerate
+
+    ///////////////////////// DRAM WRITING VARIABLES !!!! ////////////////////////////
+    
+    /////////////////////////// FAT FAT FAT WIRING !!!! FAT FAT FAT !!!! ///////////////
+
+    always_ff @(posedge clk_100mhz) begin
+        if (system_reset) begin
+            top_level_state <= RST;
+        end else if (top_level_state == RST) begin
+            top_level_state <= MAKING_TRIANGLES;
+        end else if (top_level_state == MAKING_TRIANGLES) begin
+            ////////////////////////////////// MAKING TRIANGLES LOGIC /////////////////////////////////////////////////////
+
+            // TODO-2: fill this in with 3D projection logic
+            top_level_state <= PAINTING_TILES;
+
+            // initialize state variables for PAINTING_TILES, READING_NEW_TRIANGLE_1
+            tile_index <= 0;
+
+            tile_state <= READING_NEW_TRIANGLE_1;
+            for (int i = 0; i < 8; i=i+1) begin
+                tile_triangle_index[i] <= 0;
+            end
+
+            // TODO-1: set this to test
+            num_triangles <= 0;
+
+        end else if(top_level_state == PAINTING_TILES) begin
+            //////////////////////////////////////// PAINTING TILES LOGIC /////////////////////////////////////////////////
+            
+            if (tile_state == READING_NEW_TRIANGLE_1) begin
+                tile_state <= READING_NEW_TRIANGLE_2;
+            end else if(tile_state == READING_NEW_TRIANGLE_2) begin
+                x_coord_reading <= 0;
+                y_coord_reading <= 0;
+                reading_coords_valid <= 1;
+
+                for(int i = 0; i < 8; i=i+1) begin
+                    tile_triangle_data[i] <= bram_triangle_out[i];
+                end
+            end else if (tile_state == ITERATING) begin
+
+                // must cycle x_coord_reading from 0 to 19
+                if (x_coord_reading < 19) begin
+                    x_coord_reading <= x_coord_reading + 1;
+                end else begin
+                    x_coord_reading <= 0;
+
+                    // must cycle y_coord_reading from 0 to 44
+                    if (y_coord_reading < 44) begin
+                        y_coord_reading <= y_coord_reading + 1;
+                    end else begin
+                        // done with current tile!
+                        y_coord_reading <= 0;
+                        
+                        tile_state <= WAITING_TO_COMPLETE;
+                        reading_coords_valid <= 0;
+                    end
+                end
+            end else if(tile_state == WAITING_TO_COMPLETE) begin
+                
+
+
+            end
+            
+
+        end
+    end
+
 endmodule // top_level
 
 
