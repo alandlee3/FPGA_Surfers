@@ -87,20 +87,20 @@ async def test_a(dut):
 
 
 
-def tile_painter_runner():
+def pixel_calculator_runner():
     """Tile Painter Tester."""
     hdl_toplevel_lang = os.getenv("HDL_TOPLEVEL_LANG", "verilog")
     # sim = os.getenv("SIM", "icarus")
     sim = os.getenv("SIM","vivado")
     proj_path = Path(__file__).resolve().parent.parent
     sys.path.append(str(proj_path / "sim" / "model"))
-    sources = [proj_path / "hdl" / "tile_painter.sv"]
+    sources = [proj_path / "hdl" / "pixel_calculator.sv"]
     build_test_args = ["-Wall"]
     #values for parameters defined earlier in the code.
     # parameters = { 'KERNEL_DIMENSION': 3, 'K_SELECT': 2} # sharpen for now
  
     sys.path.append(str(proj_path / "sim"))
-    hdl_toplevel = "tile_painter"
+    hdl_toplevel = "pixel_calculator"
     runner = get_runner(sim)
     runner.build(
         sources=sources,
@@ -120,4 +120,4 @@ def tile_painter_runner():
     )
 
 if __name__ == '__main__':
-    tile_painter_runner()
+    pixel_calculator_runner()

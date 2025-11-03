@@ -946,41 +946,6 @@ module top_level(
         end else if(top_level_state == PAINTING_TILES) begin
             //////////////////////////////////////// PAINTING TILES LOGIC /////////////////////////////////////////////////
             
-            if (tile_state == READING_NEW_TRIANGLE_1) begin
-                tile_state <= READING_NEW_TRIANGLE_2;
-            end else if(tile_state == READING_NEW_TRIANGLE_2) begin
-                x_coord_reading <= 0;
-                y_coord_reading <= 0;
-                reading_coords_valid <= 1;
-
-                for(int i = 0; i < 8; i=i+1) begin
-                    tile_triangle_data[i] <= bram_triangle_out[i];
-                end
-            end else if (tile_state == ITERATING) begin
-
-                // must cycle x_coord_reading from 0 to 19
-                if (x_coord_reading < 19) begin
-                    x_coord_reading <= x_coord_reading + 1;
-                end else begin
-                    x_coord_reading <= 0;
-
-                    // must cycle y_coord_reading from 0 to 44
-                    if (y_coord_reading < 44) begin
-                        y_coord_reading <= y_coord_reading + 1;
-                    end else begin
-                        // done with current tile!
-                        y_coord_reading <= 0;
-                        
-                        tile_state <= WAITING_TO_COMPLETE;
-                        reading_coords_valid <= 0;
-                    end
-                end
-            end else if(tile_state == WAITING_TO_COMPLETE) begin
-                
-
-
-            end
-            
 
         end
     end
