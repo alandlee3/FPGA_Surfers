@@ -25,6 +25,7 @@ async def test_a(dut):
     dut._log.info("Holding reset...")
     dut.rst.value = 1
     dut.active.value = 0
+    dut.wipe.value = 0
 
     for i in range(2):
         await cycle(dut)
@@ -36,6 +37,15 @@ async def test_a(dut):
 
     for _ in range(10000):
         await cycle(dut)
+    
+    print(TILE)
+    
+    dut._log.info("Wiping.....")
+
+    dut.wipe.value = 1
+    
+    for _ in range(10000):
+        await cycle(dut)
 
     print(TILE)
 
@@ -44,8 +54,8 @@ def convert_to_triangle(color, p1x, p1y, p2x, p2y, p3x, p3y, total_depth):
     return color * (2**112) + p1x * (2**96) + p1y * (2**80) + p2x * (2**64) + p2y * (2**48) + p3x * (2**32) + p3y * (2**16) + total_depth
 
 BRAM = [
-    convert_to_triangle(0xFF00, 0, 0, 20, 0, 10, 10, 50),
-    convert_to_triangle(63, 0, 0, 0, 10, 10, 10, 100),
+    convert_to_triangle(0xFF00, 15, 15, 20, 0, 10, 10, 50),
+    # convert_to_triangle(63, 0, 0, 0, 10, 10, 10, 100),
 ]
 
 NUM_TRIANGLES = len(BRAM)
