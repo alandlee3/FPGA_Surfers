@@ -85,8 +85,6 @@ async def test_a(dut):
 
     await ClockCycles(dut.clk, 3)
 
-
-
 def pixel_calculator_runner():
     """Tile Painter Tester."""
     hdl_toplevel_lang = os.getenv("HDL_TOPLEVEL_LANG", "verilog")

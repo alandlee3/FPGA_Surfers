@@ -2,6 +2,7 @@
 `default_nettype none
 
 // TODO: implement wiping
+// TODO: optimize lel
 
 module tile_painter #(parameter MAX_TRIANGLES=256) (
         input wire clk,
@@ -11,14 +12,14 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
         // and modify all the pixels in the tile bram.
         input wire active,
 
-        input wire [TRIANGLE_BRAM_ADDR_WIDTH-1:0] num_triangles,
+        input wire [$clog2(MAX_TRIANGLES)-1:0] num_triangles,
         input wire [8:0] x_offset, // x coord of the top left pixel of the current tile
         input wire [7:0] y_offset, // y coord **
 
         input wire [127:0] bram_triangle_read_data, // recall this is 2 cycles delayed from bram_triangle_read_addr
         input wire [31:0] tile_bram_read_data, // 2 cycles delayed from tile_bram_read_addr
 
-        output logic [TRIANGLE_BRAM_ADDR_WIDTH-1:0] bram_triangle_read_addr,
+        output logic [$clog2(MAX_TRIANGLES)-1:0] bram_triangle_read_addr,
         output logic [9:0] tile_bram_read_addr,
 
         output logic [9:0] tile_bram_write_addr,
@@ -88,8 +89,9 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
         RST,
         READING_NEW_TRIANGLE_1, // reading a new triangle from BRAMs, first cycle
         READING_NEW_TRIANGLE_2, // reading a new triangle from BRAMs, second cycle
+        DONE_READING_TRIANGLE, // done reading new triangle, find triangle data and go to iteration.
       	ITERATING, // x_offset_reading, y_offset_reading are cycling.
-        DONE, // done !!
+        DONE // done !!
     } tile_state_type;
     tile_state_type tile_state;
 
@@ -107,11 +109,11 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
         .pixel_data_out(writing_pixel_data)
     );
 
-    assign tile_bram_write_addr = y_coord_writing * 20 + x_coord_writing;
+    assign tile_bram_write_addr = y_offset_writing * 20 + x_offset_writing;
     assign tile_bram_write_data = writing_pixel_data;
     assign tile_bram_write_valid = writing_coords_valid;
 
-    assign tile_bram_read_addr = y_coord_reading * 20 + x_coord_reading;
+    assign tile_bram_read_addr = y_offset_reading * 20 + x_offset_reading;
 
     always_ff @( posedge clk ) begin
         
@@ -130,6 +132,8 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
         end else if (tile_state == READING_NEW_TRIANGLE_1) begin
             tile_state <= READING_NEW_TRIANGLE_2;
         end else if(tile_state == READING_NEW_TRIANGLE_2) begin
+            tile_state <= DONE_READING_TRIANGLE;
+        end else if(tile_state == DONE_READING_TRIANGLE) begin
             // we have a new triangle! initialize the ITERATING state.
             x_offset_reading <= 0;
             y_offset_reading <= 0;
@@ -151,7 +155,7 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
                     // done with current triangle!
                     reading_coords_valid <= 0;
 
-                    if (triangle_index < num_triangles) begin
+                    if (triangle_index + 1 < num_triangles) begin
                         triangle_index <= triangle_index + 1;
                         tile_state <= READING_NEW_TRIANGLE_1;
                     end else begin
