@@ -1,2 +1,6 @@
+<<<<<<< HEAD
 INFO: [VRFC 10-2263] Analyzing SystemVerilog file "/home/fpga/worker_place/temp/temp/d5416c626c8e434c9689884e824ee848/sim_build/cocotb_vivado_dump.v" into library work
+=======
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "/home/fpga/worker_place/temp/temp/e25111aa5cc5494d81746455112089ff/sim_build/cocotb_vivado_dump.v" into library work
+>>>>>>> origin
 INFO: [VRFC 10-311] analyzing module cocotb_vivado_dump

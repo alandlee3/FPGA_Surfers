@@ -38,6 +38,8 @@ async def test_a(dut):
     for _ in range(10000):
         await cycle(dut)
     
+    with open("test_image_list.txt", "w") as file:
+        file.write(str(TILE))
     print(TILE)
     
     dut._log.info("Wiping.....")
@@ -54,11 +56,19 @@ def convert_to_triangle(color, p1x, p1y, p2x, p2y, p3x, p3y, total_depth):
     return color * (2**112) + p1x * (2**96) + p1y * (2**80) + p2x * (2**64) + p2y * (2**48) + p3x * (2**32) + p3y * (2**16) + total_depth
 
 BRAM = [
-    convert_to_triangle(0xFF00, 15, 15, 20, 0, 10, 10, 50),
-    # convert_to_triangle(63, 0, 0, 0, 10, 10, 10, 100),
+    convert_to_triangle(0xFF00,     5, 40, 15, 40, 15, 25, 50), # yellow
+    convert_to_triangle(0xFF00,     5, 40, 5, 25, 15, 25, 50), # yellow
+    convert_to_triangle(2**11 * 16, 15, 40, 24, 26, 15, 25, 18), # red
+    convert_to_triangle(2**11 * 16, 24, 15, 24, 26, 15, 25, 18), # red
+    convert_to_triangle(63,         5, 25, 15, 25, 16, 15, 10), # blue
+    convert_to_triangle(63,         16, 15, 24, 15, 15, 25, 10), # blue
 ]
 
 NUM_TRIANGLES = len(BRAM)
+
+# offsets here shouldn't do anything,
+# since BRAM doesn't carer about offset as the choice of BRAM already
+# encodes the offset
 X_OFFSET = 0
 Y_OFFSET = 0
 
