@@ -1,6 +1,6 @@
 <testsuites name="results">
   <testsuite name="all" package="all">
-    <property name="random_seed" value="1762208592" />
-    <testcase name="test_a" classname="test_tile_painter" file="/home/fpga/worker_place/temp/temp/e25111aa5cc5494d81746455112089ff/sim/test_tile_painter.py" lineno="18" time="3.2738003730773926" sim_time_ns="200020.001" ratio_time="61097.18926202576" />
+    <property name="random_seed" value="1762315803" />
+    <testcase name="test_a" classname="test_ddd_projector" file="/home/fpga/worker_place/temp/temp/4a2417e1e47d4e13971aaae2e9e42261/sim/test_ddd_projector.py" lineno="18" time="0.004248380661010742" sim_time_ns="320.001" ratio_time="75323.05260138055" />
   </testsuite>
 </testsuites>

@@ -6,7 +6,7 @@ module pixel_calculator (
         input wire [8:0] xcoord_in,
         input wire [7:0] ycoord_in,
         input wire [31:0] pixel_data_in, // top 16 bits color, bottom 16 bits depth
-        input wire [127:0] triangle, // color|p1x|p1y|p2x|p2y|p3x|p3y|p1z+p2z+p3z, depth unsigned
+        input wire [127:0] triangle, // color|p1x|p1y|p2x|p2y|p3x|p3y|'depth', depth unsigned
         input wire pixel_in_valid,
         output logic [8:0] xcoord_out,
         output logic [7:0] ycoord_out,
