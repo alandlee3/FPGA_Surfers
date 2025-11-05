@@ -96,8 +96,9 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
         READING_NEW_TRIANGLE_2, // reading a new triangle from BRAMs, second cycle
         DONE_READING_TRIANGLE, // done reading new triangle, find triangle data and go to iteration.
       	ITERATING, // x_offset_reading, y_offset_reading are cycling.
-        DONE, // done !!
-        WIPE // currently wiping !!
+        DONE, // done painting !!
+        WIPE, // currently wiping !!
+        WIPEDONE // done wiping, nothing will get you out of this state except holding active low.
     } tile_state_type;
     tile_state_type tile_state;
 
@@ -130,6 +131,8 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
 
             reading_coords_valid <= 0;
         end else if (tile_state == RST) begin
+            reading_coords_valid <= 0;
+            
             if (wipe) begin // wipe takes priority!
                 tile_state <= WIPE;
                 x_wipe <= 0;
@@ -195,9 +198,11 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
                 if (y_wipe < 44) begin
                     y_wipe <= y_wipe + 1;
                 end else begin
-                    tile_state <= DONE;
+                    tile_state <= WIPEDONE;
                 end
             end
+        end else if (tile_state == WIPEDONE) begin
+            done <= 1;
         end
     end
 
