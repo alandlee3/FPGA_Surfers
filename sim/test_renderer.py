@@ -15,90 +15,100 @@ test_file = os.path.basename(__file__).replace(".py","")
 CLK_PERIOD = 10
 PCLK_PERIOD = 20
 
+def convert_to_triangle(color, p1x, p1y, p2x, p2y, p3x, p3y, total_depth):
+    return color * (2**112) + p1x * (2**96) + p1y * (2**80) + p2x * (2**64) + p2y * (2**48) + p3x * (2**32) + p3y * (2**16) + total_depth
+
 @cocotb.test()
 async def test_a(dut):
     """cocotb test"""
     dut._log.info("Starting...")
     cocotb.start_soon(Clock(dut.clk, CLK_PERIOD, units="ns").start())
-    # cocotb.start_soon(Clock(dut.camera_pclk, PCLK_PERIOD, units="ns").start())
 
     dut._log.info("Holding reset...")
     dut.rst.value = 1
 
-    ## test some pixel insertions
+    dut.active.value = 0
+    dut.triangle.value = 0
+    dut.triangle_valid.value = 0
+
     await ClockCycles(dut.clk, 3)
+
     dut.rst.value = 0
 
-    # input wire clk,
-    # input wire rst,
-    # input wire [8:0] xcoord_in,
-    # input wire [7:0] ycoord_in,
-    # input wire [31:0] pixel_data_in, // top 16 bits color, bottom 16 bits depth
-    # input wire [127:0] triangle, // color|p1x|p1y|p2x|p2y|p3x|p3y|p1z+p2z+p3z, depth unsigned
-    # input wire pixel_in_valid,
-    # output logic [8:0] xcoord_out,
-    # output logic [7:0] ycoord_out,
-    # output logic [31:0] pixel_data_out, // top 16 bits color, bottom 16 bits depth
-    # output logic pixel_out_valid
-
-    def convert_to_triangle(color, p1x, p1y, p2x, p2y, p3x, p3y, total_depth):
-        return color * (2**112) + p1x * (2**96) + p1y * (2**80) + p2x * (2**64) + p2y * (2**48) + p3x * (2**32) + p3y * (2**16) + total_depth
-
-    await ClockCycles(dut.clk, 1)
-    dut.xcoord_in.value = 10
-    dut.ycoord_in.value = 15
-    dut.pixel_data_in.value = 57005 * (2**16) + 48879 # deadbeef
-    dut.triangle.value = convert_to_triangle(57069, 1, 1, 35, 80, 17, 10, 15)
-    dut.pixel_in_valid.value = 1
-
-    # move triangle to make pixel not inside, also vary depth (but still behind)
-    await ClockCycles(dut.clk, 1)
-    dut.xcoord_in.value = 10
-    dut.ycoord_in.value = 15
-    dut.pixel_data_in.value = 57005 * (2**16) + 16
-    dut.triangle.value = convert_to_triangle(57069, 10, 10, 35, 80, 17, 10, 15)
-    dut.pixel_in_valid.value = 1
-
-    # move triangle to contain again, but with negative coords
-    await ClockCycles(dut.clk, 1)
-    dut.xcoord_in.value = 10
-    dut.ycoord_in.value = 15
-    dut.pixel_data_in.value = 57005 * (2**16) + 48879 # deadbeef
-    dut.triangle.value = convert_to_triangle(57069, 2**16 - 150, 2**16 - 10, 35, 80, 17, 10, 15)
-    dut.pixel_in_valid.value = 1
-
-    # still in triangle, but now closer to screen
-    await ClockCycles(dut.clk, 1)
-    dut.xcoord_in.value = 10
-    dut.ycoord_in.value = 15
-    dut.pixel_data_in.value = 57005 * (2**16) + 10
-    dut.triangle.value = convert_to_triangle(57069, 2**16 - 150, 2**16 - 10, 35, 80, 17, 10, 15)
-    dut.pixel_in_valid.value = 1
-
-    # still in triangle, but now tied for closeness (thus no update)
-    await ClockCycles(dut.clk, 1)
-    dut.xcoord_in.value = 10
-    dut.ycoord_in.value = 15
-    dut.pixel_data_in.value = 6767 * (2**16) + 15
-    dut.triangle.value = convert_to_triangle(57069, 2**16 - 150, 2**16 - 10, 35, 80, 17, 10, 15)
-    dut.pixel_in_valid.value = 1
-
     await ClockCycles(dut.clk, 3)
 
-def pixel_calculator_runner():
-    """Tile Painter Tester."""
+    dut.triangle_valid.value = 1
+    dut.triangle.value = convert_to_triangle(0xFF00, 0, 0, 0, 100, 100, 100, 10)
+
+    await ClockCycles(dut.clk, 1)
+
+    dut.triangle_valid.value = 1
+    dut.triangle.value = convert_to_triangle(0xFFFF, 50, 0, 150, 50, 200, 200, 10)
+
+    await ClockCycles(dut.clk, 1)
+
+    dut.triangle_valid.value = 1
+    dut.triangle.value = convert_to_triangle(0x000F, 160, 0, 320, 180, 0, 180, 50)
+
+    await ClockCycles(dut.clk, 1)
+
+    dut.triangle_valid.value = 0
+
+    await ClockCycles(dut.clk, 10)
+
+    dut.active.value = 1
+
+    for _ in range(30000):
+        await read_clock_cycle(dut)
+
+    with open("test_renderer_list.txt", "w") as file:
+        file.write(str(frame_buffer))
+
+def p_int(str):
+    if str == 'X':
+        return 0
+    else:
+        try:
+            return int(str)
+        except:
+            return 0
+
+frame_buffer = [ [0] * 320 for _ in range(180) ]
+
+async def read_clock_cycle(dut):
+
+    await FallingEdge(dut.clk)
+
+    if p_int(dut.valid.value) == 1:
+        h = p_int(dut.h_count.value)
+        v = p_int(dut.v_count.value)
+        data = p_int(dut.data.value)
+
+        try:
+            frame_buffer[v][h] = data
+
+        except:
+            print(h,v)
+            raise Exception("lolz")
+
+    await RisingEdge(dut.clk)
+
+
+
+def renderer_runner():
+    """Renderer Tester."""
     hdl_toplevel_lang = os.getenv("HDL_TOPLEVEL_LANG", "verilog")
     # sim = os.getenv("SIM", "icarus")
     sim = os.getenv("SIM","vivado")
     proj_path = Path(__file__).resolve().parent.parent
     sys.path.append(str(proj_path / "sim" / "model"))
-    sources = [proj_path / "hdl" / "pixel_calculator.sv"]
+    sources = [proj_path / "hdl" / "renderer.sv", proj_path / "hdl" / "pixel_calculator.sv", proj_path / "hdl" / "tile_painter.sv", proj_path / "hdl" / "pipeline.sv", proj_path / "hdl" / "renderer.sv", proj_path / "hdl" / "xilinx_true_dual_port_read_first_2_clock_ram.v"]
     build_test_args = ["-Wall"]
     #values for parameters defined earlier in the code.
     # parameters = { 'KERNEL_DIMENSION': 3, 'K_SELECT': 2} # sharpen for now
  
     sys.path.append(str(proj_path / "sim"))
-    hdl_toplevel = "pixel_calculator"
+    hdl_toplevel = "renderer"
     runner = get_runner(sim)
     runner.build(
         sources=sources,
@@ -118,4 +128,4 @@ def pixel_calculator_runner():
     )
 
 if __name__ == '__main__':
-    pixel_calculator_runner()
+    renderer_runner()

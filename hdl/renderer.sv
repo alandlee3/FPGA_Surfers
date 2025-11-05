@@ -1,6 +1,12 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
+`ifdef SYNTHESIS
+`define FPATH(X) `"X`"
+`else /* ! SYNTHESIS */
+`define FPATH(X) `"../data/X`"
+`endif  /* ! SYNTHESIS */
+
 // one module to rule them all
 module renderer(
     input wire clk,
@@ -36,8 +42,8 @@ module renderer(
     logic [127:0] bram_triangle_in_data;
     logic bram_triangle_in_valid;
 
-    logic [wMAX_TRIANGLES-1:0] bram_triangle_out_addr [wN_WAY-1:0];
-    logic [127:0] bram_triangle_out_data [wN_WAY-1:0];
+    logic [wMAX_TRIANGLES-1:0] bram_triangle_out_addr [N_WAY_PARALLEL-1:0];
+    logic [127:0] bram_triangle_out_data [N_WAY_PARALLEL-1:0];
 
     generate
         genvar i;
@@ -56,7 +62,7 @@ module renderer(
                 .rsta(rst),
                 .douta(), //never read from this side
                 .addrb(bram_triangle_out_addr[i]),// triangle lookup
-                .dinb(16'b0),
+                .dinb(128'b0),
                 .clkb(clk),
                 .web(1'b0),
                 .enb(1'b1),
@@ -70,37 +76,38 @@ module renderer(
     //////////////////////////////////////////////// TILE BRAMS ///////////////////////////////////////////
 
     // pixel to write into the tile BRAMs. Used by tile painter
-    logic [9:0] tile_bram_pixel_in_addr [wN_WAY-1:0];
-    logic tile_bram_pixel_in_valid [wN_WAY-1:0];
-    logic [31:0] tile_bram_pixel_in_data [wN_WAY-1:0];
+    logic [9:0] tile_bram_pixel_in_addr [N_WAY_PARALLEL-1:0];
+    logic tile_bram_pixel_in_valid [N_WAY_PARALLEL-1:0];
+    logic [31:0] tile_bram_pixel_in_data [N_WAY_PARALLEL-1:0];
 
     // pixel to read out of the tile BRAMs. Used by BOTH TILE PAINTER AND DRAM WRITING!!!
-    logic [9:0] tile_bram_pixel_out_addr [wN_WAY-1:0];
-    logic [31:0] tile_bram_pixel_out_data [wN_WAY-1:0];
+    logic [9:0] tile_bram_pixel_out_addr [N_WAY_PARALLEL-1:0];
+    logic [31:0] tile_bram_pixel_out_data [N_WAY_PARALLEL-1:0];
 
     generate
-        genvar i;
-        for (i = 0; i < N_WAY_PARALLEL; i=i+1) begin
+        genvar j;
+        for (j = 0; j < N_WAY_PARALLEL; j=j+1) begin
             xilinx_true_dual_port_read_first_2_clock_ram #(
                 .RAM_WIDTH(32), //each pixel is 32 bits - 16 bits of color, 16 bits of depth
-                .RAM_DEPTH(900) // 20 x 45 tile
+                .RAM_DEPTH(900), // 20 x 45 tile
+                .INIT_FILE(`FPATH(tile_bram.mem))
             ) tile_bram (
-                .addra(tile_bram_pixel_in_addr[i]), // a is for writing in triangles!
+                .addra(tile_bram_pixel_in_addr[j]), // a is for writing in triangles!
                 .clka(clk),
-                .wea(tile_bram_pixel_in_valid[i]),
-                .dina(tile_bram_pixel_in_data[i]),
+                .wea(tile_bram_pixel_in_valid[j]),
+                .dina(tile_bram_pixel_in_data[j]),
                 .ena(1'b1),
                 .regcea(1'b1),
                 .rsta(rst),
                 .douta(), //never read from this side
-                .addrb(tile_bram_pixel_out_addr[i]),// triangle lookup
-                .dinb(16'b0),
+                .addrb(tile_bram_pixel_out_addr[j]),// triangle lookup
+                .dinb(32'b0),
                 .clkb(clk),
                 .web(1'b0),
                 .enb(1'b1),
                 .rstb(rst),
                 .regceb(1'b1),
-                .doutb(tile_bram_pixel_out_data[i])
+                .doutb(tile_bram_pixel_out_data[j])
             );
         end
     endgenerate
@@ -112,8 +119,11 @@ module renderer(
         IDLE,
         PAINTING_TILES,
         WRITING_TO_DRAM,
-        INTERMEDIATE,
+        INTERMEDIATE_BEFORE_WIPE_1,
+        INTERMEDIATE_BEFORE_WIPE_2,
         WIPING_TILES,
+        INTERMEDIATE_BEFORE_PAINTING_1,
+        INTERMEDIATE_BEFORE_PAINTING_2,
         DONE
     } renderer_state;
     renderer_state state;
@@ -128,13 +138,13 @@ module renderer(
     logic tile_painters_active;
     logic tile_painters_wipe;
 
-    logic tile_painters_done [wN_WAY-1:0];
+    logic [N_WAY_PARALLEL-1:0] tile_painters_done;
 
-    logic [9:0] tile_painter_wants_to_read_tile_bram_addr [wN_WAY-1:0];
+    logic [9:0] tile_painter_wants_to_read_tile_bram_addr [N_WAY_PARALLEL-1:0];
 
     generate
-        genvar i;
-        for (i = 0; i < N_WAY_PARALLEL; i=i+1) begin
+        genvar k;
+        for (k = 0; k < N_WAY_PARALLEL; k=k+1) begin
             tile_painter #(.MAX_TRIANGLES(MAX_TRIANGLES)) tile_painter (
                 .clk(clk),
                 .rst(rst),
@@ -143,20 +153,20 @@ module renderer(
                 .wipe(tile_painters_wipe),
                 
                 .num_triangles(num_triangles),
-                .x_offset(i * 20),
+                .x_offset(k * 20),
                 .y_offset(y_offset),
 
-                .bram_triangle_read_data(tile_bram_pixel_out_data[i]),
-                .tile_bram_read_data(tile_bram_pixel_out_data[i]),
+                .bram_triangle_read_data(bram_triangle_out_data[k]),
+                .tile_bram_read_data(tile_bram_pixel_out_data[k]),
 
-                .bram_triangle_read_addr(tile_painter_wants_to_read_tile_bram_addr[i]),
-                .tile_bram_read_addr(tile_bram_pixel_out_addr[i]),
+                .bram_triangle_read_addr(bram_triangle_out_addr[k]),
+                .tile_bram_read_addr(tile_painter_wants_to_read_tile_bram_addr[k]),
 
-                .tile_bram_write_addr(tile_bram_pixel_in_addr[i]),
-                .tile_bram_write_valid(tile_bram_pixel_in_valid[i]),
-                .tile_bram_write_data(tile_bram_pixel_in_data[i]),
+                .tile_bram_write_addr(tile_bram_pixel_in_addr[k]),
+                .tile_bram_write_valid(tile_bram_pixel_in_valid[k]),
+                .tile_bram_write_data(tile_bram_pixel_in_data[k]),
 
-                .done(tile_painters_done[i])
+                .done(tile_painters_done[k])
             );
         end
     endgenerate
@@ -175,8 +185,8 @@ module renderer(
     assign dram_wants_to_read_addr = v_count_minus_offset * 20 + h_count_modulo_20;
 
     always_comb begin
-        for (int i = 0; i < N_WAY_PARALLEL; i=i+1) begin
-            tile_bram_pixel_out_addr[i] = (state == WRITING_TO_DRAM) ? dram_wants_to_read_addr : tile_painter_wants_to_read_tile_bram_addr[i];
+        for (int l = 0; l < N_WAY_PARALLEL; l=l+1) begin
+            tile_bram_pixel_out_addr[l] = (state == WRITING_TO_DRAM) ? dram_wants_to_read_addr : tile_painter_wants_to_read_tile_bram_addr[l];
         end
     end
 
@@ -199,14 +209,14 @@ module renderer(
     );
 
     logic [3:0] h_count_div_20_pl;
-    pipeline #(.WIDTH(5), .STAGES_NEEDED(2)) hcountdiv20_pl (
+    pipeline #(.WIDTH(4), .STAGES_NEEDED(2)) hcountdiv20_pl (
         .clk(clk),
         .in(h_count_div_20),
         .out(h_count_div_20_pl)
     );
 
     assign last = (h_count == 319) && (v_count == 179);
-    assign data = tile_bram_pixel_out_data[h_count_div_20_pl];
+    assign data = tile_bram_pixel_out_data[h_count_div_20_pl][31:16];
 
     always_ff @( posedge clk ) begin
         bram_triangle_in_valid <= 0;
@@ -264,24 +274,38 @@ module renderer(
                     v_count_state <= v_count_state + 1;
                     v_count_minus_offset <= v_count_minus_offset + 1;
                 end else begin
-                    state <= INTERMEDIATE;
+                    state <= INTERMEDIATE_BEFORE_WIPE_1;
                     v_count_state <= 0;
                     v_count_minus_offset <= 0;
-                    tile_painters_wipe <= 1;
                     valid_state <= 0;
+
+                    tile_painters_wipe <= 1;
                 end
             end
-        end else if (state == INTERMEDIATE) begin
-            state <= WIPING_TILES; // have to have this state b/c tile_painters_done is still high.
+        end else if (state == INTERMEDIATE_BEFORE_WIPE_1) begin
+            state <= INTERMEDIATE_BEFORE_WIPE_2; // have to have this state b/c tile_painters_done is still high.
+        end else if (state == INTERMEDIATE_BEFORE_WIPE_2) begin
+            state <= WIPING_TILES;
         end else if(state == WIPING_TILES) begin
             if(tile_painters_done == 16'hFFFF) begin
                 
+                tile_painters_wipe <= 0;
+
                 if(tile_index == 3) begin
                     // we r sooo done
                     state <= DONE;
+                end else begin
+                    state <= INTERMEDIATE_BEFORE_PAINTING_1;
+                    tile_index <= tile_index+1;
+                    tile_painters_active <= 0;
                 end
 
             end
+        end else if(state == INTERMEDIATE_BEFORE_PAINTING_1) begin
+            state <= INTERMEDIATE_BEFORE_PAINTING_2;
+            tile_painters_active <= 1;
+        end else if(state == INTERMEDIATE_BEFORE_PAINTING_2) begin
+            state <= PAINTING_TILES;
         end else if(state == DONE) begin
             if (!active) begin
                 state <= RST;
