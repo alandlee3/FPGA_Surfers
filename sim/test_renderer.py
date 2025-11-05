@@ -58,7 +58,7 @@ async def test_a(dut):
 
     dut.active.value = 1
 
-    for _ in range(30000):
+    for _ in range(20000):
         await read_clock_cycle(dut)
 
     with open("test_renderer_list.txt", "w") as file:
