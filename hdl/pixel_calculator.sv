@@ -26,7 +26,7 @@ module pixel_calculator (
 
     // extract triangle info
     logic [15:0] triangle_color;
-    logic signed [15:0] p1x, p1y, p2x, p2y, p3x, p3y;
+    logic signed [31:0] p1x, p1y, p2x, p2y, p3x, p3y;
     logic [15:0] total_depth;
     assign triangle_color = triangle[127:112];
     assign p1x = $signed(triangle[111:96]);
@@ -38,7 +38,7 @@ module pixel_calculator (
     assign total_depth = triangle[15:0];
 
     // compute vector components for each side vector
-    logic signed [1:0][15:0] ab, bc, ca;
+    logic signed [1:0][31:0] ab, bc, ca;
     assign ab[0] = p2x - p1x;// x coordinate
     assign ab[1] = p2y - p1y;// y coordinate
     assign bc[0] = p3x - p2x;// x coordinate
@@ -47,7 +47,7 @@ module pixel_calculator (
     assign ca[1] = p1y - p3y;// y coordinate
 
     // compute vector components for each pixel vector
-    logic signed [1:0][15:0] ap, bp, cp;
+    logic signed [1:0][31:0] ap, bp, cp;
     assign ap[0] = $signed(xcoord_in - p1x);
     assign ap[1] = $signed(ycoord_in - p1y);
     assign bp[0] = $signed(xcoord_in - p2x);
@@ -56,7 +56,7 @@ module pixel_calculator (
     assign cp[1] = $signed(ycoord_in - p3y);
 
     // cross product registers
-    logic signed [15:0] c11, c12, c21, c22, c31, c32;
+    logic signed [31:0] c11, c12, c21, c22, c31, c32;
 
     // additional buffers for combinational logic
     logic [15:0] total_depth_buff, color_data_buff, depth_data_buff, triangle_color_buff;
