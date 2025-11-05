@@ -1,7 +1,6 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
-// TODO: implement wiping
 // TODO: optimize lel
 
 module tile_painter #(parameter MAX_TRIANGLES=256) (
