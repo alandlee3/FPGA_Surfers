@@ -26,7 +26,7 @@ module pixel_calculator (
 
     // extract triangle info
     logic [15:0] triangle_color;
-    logic signed [31:0] p1x, p1y, p2x, p2y, p3x, p3y;
+    logic signed [15:0] p1x, p1y, p2x, p2y, p3x, p3y;
     logic [15:0] total_depth;
     assign triangle_color = triangle[127:112];
     assign p1x = $signed(triangle[111:96]);
@@ -38,7 +38,7 @@ module pixel_calculator (
     assign total_depth = triangle[15:0];
 
     // compute vector components for each side vector
-    logic signed [1:0][31:0] ab, bc, ca;
+    logic signed [1:0][15:0] ab, bc, ca;
     assign ab[0] = p2x - p1x;// x coordinate
     assign ab[1] = p2y - p1y;// y coordinate
     assign bc[0] = p3x - p2x;// x coordinate
@@ -47,7 +47,7 @@ module pixel_calculator (
     assign ca[1] = p1y - p3y;// y coordinate
 
     // compute vector components for each pixel vector
-    logic signed [1:0][31:0] ap, bp, cp;
+    logic signed [1:0][15:0] ap, bp, cp;
     assign ap[0] = $signed(xcoord_in - p1x);
     assign ap[1] = $signed(ycoord_in - p1y);
     assign bp[0] = $signed(xcoord_in - p2x);
@@ -90,12 +90,12 @@ module pixel_calculator (
             triangle_color_buff <= triangle_color;
 
             // multiplications for cross products
-            c11 <= $signed(ab[0] * ap[1]);
-            c12 <= $signed(ab[1] * ap[0]);
-            c21 <= $signed(bc[0] * bp[1]);
-            c22 <= $signed(bc[1] * bp[0]);
-            c31 <= $signed(ca[0] * cp[1]);
-            c32 <= $signed(ca[1] * cp[0]);
+            c11 <= $signed(ab[0]) * $signed(ap[1]);
+            c12 <= $signed(ab[1]) * $signed(ap[0]);
+            c21 <= $signed(bc[0]) * $signed(bp[1]);
+            c22 <= $signed(bc[1]) * $signed(bp[0]);
+            c31 <= $signed(ca[0]) * $signed(cp[1]);
+            c32 <= $signed(ca[1]) * $signed(cp[0]);
         end
     end
     

@@ -91,6 +91,15 @@ async def test_a(dut):
     dut.triangle.value = convert_to_triangle(57069, 200, 82, 300, 110, 40, 30, 14)
     dut.pixel_in_valid.value = 1
 
+    # this test was failing in test_renderer
+    # should not be in triangle, should not be recolored
+    await ClockCycles(dut.clk, 1)
+    dut.xcoord_in.value = 235
+    dut.ycoord_in.value = 23
+    dut.pixel_data_in.value = 16 * (2**16) + 15
+    dut.triangle.value = convert_to_triangle(57069, 0, 0, 70, 150, 70, 100, 5)
+    dut.pixel_in_valid.value = 1
+
     await ClockCycles(dut.clk, 3)
 
 def pixel_calculator_runner():

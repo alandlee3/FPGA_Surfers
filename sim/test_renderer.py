@@ -37,18 +37,43 @@ async def test_a(dut):
 
     await ClockCycles(dut.clk, 3)
 
+    # dut.triangle_valid.value = 1
+    # dut.triangle.value = convert_to_triangle(0xFF00, 0, 0, 0, 100, 100, 100, 10)
+
+    # await ClockCycles(dut.clk, 1)
+
+    # dut.triangle_valid.value = 1
+    # dut.triangle.value = convert_to_triangle(0xFFFF, 50, 0, 150, 50, 200, 200, 10)
+
+    # await ClockCycles(dut.clk, 1)
+
+    # dut.triangle_valid.value = 1
+    # dut.triangle.value = convert_to_triangle(0x000F, 160, 0, 320, 180, 0, 180, 50)
+
+    # await ClockCycles(dut.clk, 1)
+
+    dut.triangle_valid.value = 1
+    dut.triangle.value = convert_to_triangle(0x00FF, 0, 0, 70, 150, 70, 100, 5)
+
+    await ClockCycles(dut.clk, 1)
+
     dut.triangle_valid.value = 1
     dut.triangle.value = convert_to_triangle(0xFF00, 0, 0, 0, 100, 100, 100, 10)
 
-    await ClockCycles(dut.clk, 1)
+    # await ClockCycles(dut.clk, 1)
 
-    dut.triangle_valid.value = 1
-    dut.triangle.value = convert_to_triangle(0xFFFF, 50, 0, 150, 50, 200, 200, 10)
+    # dut.triangle_valid.value = 1
+    # dut.triangle.value = convert_to_triangle(0xFF00, 40, 150, 40, 100, 70, 100, 10)
 
-    await ClockCycles(dut.clk, 1)
+    # await ClockCycles(dut.clk, 1)
 
-    dut.triangle_valid.value = 1
-    dut.triangle.value = convert_to_triangle(0x000F, 160, 0, 320, 180, 0, 180, 50)
+    # dut.triangle_valid.value = 1
+    # dut.triangle.value = convert_to_triangle(0x00FF, 90, 110, 90, 75, 70, 150, 10)
+
+    # await ClockCycles(dut.clk, 1)
+
+    # dut.triangle_valid.value = 1
+    # dut.triangle.value = convert_to_triangle(0x00FF, 70, 150, 90, 110, 70, 100, 10)
 
     await ClockCycles(dut.clk, 1)
 
@@ -58,7 +83,7 @@ async def test_a(dut):
 
     dut.active.value = 1
 
-    for _ in range(20000):
+    for _ in range(10000):
         await read_clock_cycle(dut)
 
     with open("test_renderer_list.txt", "w") as file:
