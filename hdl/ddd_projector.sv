@@ -2,8 +2,12 @@
 `default_nettype none
 // 18 cycle projection module.
 // 16 cycles are due to division, 2 more for getting all 3 vertices out
+// we get a vertex inputs which are still (0,0) at center of screen, so need to offset
+// all coordinates by (WIDTH/2, HEIGHT/2).
 module ddd_projector #(
-        parameter LOG_Z0 = 5
+        parameter LOG_Z0 = 5,
+        parameter WIDTH = 320,
+        parameter HEIGHT = 180
     )(
         input wire clk,
         input wire rst,
@@ -72,6 +76,7 @@ module ddd_projector #(
     logic [15:0] x_division_unsigned, y_division_unsigned;
 
     // registers to store the last 3 division results in case it's a triangle
+    // these should be correctly offset now
     logic [2:0][15:0] x_division_results, y_division_results;
 
     divider3 #(.WIDTH(16)) xcoord_divider (
@@ -101,8 +106,8 @@ module ddd_projector #(
     );
 
     // convert divisions back to signed results and start accumulating to buffer
-    assign x_division_results[0] = xcoordneg_div ? 16'hFFFF - x_division_unsigned + 1: x_division_unsigned;
-    assign y_division_results[0] = ycoordneg_div ? 16'hFFFF - y_division_unsigned + 1: y_division_unsigned;
+    assign x_division_results[0] = (xcoordneg_div ? 16'hFFFF - x_division_unsigned + 1: x_division_unsigned) + WIDTH/2;
+    assign y_division_results[0] = (ycoordneg_div ? 16'hFFFF - y_division_unsigned + 1: y_division_unsigned) + HEIGHT/2;
 
     // new triangle ready for output
     always_comb begin

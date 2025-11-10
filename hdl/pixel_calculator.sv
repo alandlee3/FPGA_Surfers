@@ -56,7 +56,7 @@ module pixel_calculator (
     assign cp[1] = $signed(ycoord_in - p3y);
 
     // cross product registers
-    logic signed [15:0] c11, c12, c21, c22, c31, c32;
+    logic signed [31:0] c11, c12, c21, c22, c31, c32;
 
     // additional buffers for combinational logic
     logic [15:0] total_depth_buff, color_data_buff, depth_data_buff, triangle_color_buff;
@@ -90,12 +90,12 @@ module pixel_calculator (
             triangle_color_buff <= triangle_color;
 
             // multiplications for cross products
-            c11 <= $signed(ab[0] * ap[1]);
-            c12 <= $signed(ab[1] * ap[0]);
-            c21 <= $signed(bc[0] * bp[1]);
-            c22 <= $signed(bc[1] * bp[0]);
-            c31 <= $signed(ca[0] * cp[1]);
-            c32 <= $signed(ca[1] * cp[0]);
+            c11 <= $signed(ab[0]) * $signed(ap[1]);
+            c12 <= $signed(ab[1]) * $signed(ap[0]);
+            c21 <= $signed(bc[0]) * $signed(bp[1]);
+            c22 <= $signed(bc[1]) * $signed(bp[0]);
+            c31 <= $signed(ca[0]) * $signed(cp[1]);
+            c32 <= $signed(ca[1]) * $signed(cp[0]);
         end
     end
     
