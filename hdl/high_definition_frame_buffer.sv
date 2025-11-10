@@ -50,6 +50,8 @@ module high_definition_frame_buffer(
     output wire [1:0]   ddr3_dm,      //data mask
     output wire         ddr3_odt      //on-die termination (helps impedance match)
 );
+    localparam WIDTH=1280;
+    localparam HEIGHT=720;
     
     logic [127:0] camera_axis_tdata;
     logic         camera_axis_tlast;
@@ -65,7 +67,7 @@ module high_definition_frame_buffer(
         .pixel_tready(),
         .pixel_tdata(camera_pixel),
         // define the tlast value! you can do it in one line, based on camera h_count/v_count values XX
-        .pixel_tlast(camera_h_count == 1279 && camera_v_count == 719), // CHANGE ME
+        .pixel_tlast(camera_h_count == WIDTH-1 && camera_v_count == HEIGHT-1), // CHANGE ME
         .chunk_tvalid(camera_axis_tvalid),
         .chunk_tready(camera_axis_tready),
         .chunk_tdata(camera_axis_tdata),
@@ -117,7 +119,7 @@ module high_definition_frame_buffer(
 
     // this traffic generator handles reads and writes issued to the MIG IP,
     // which in turn handles the bus to the DDR chip.
-    traffic_generator traffic_generator_inst(
+    traffic_generator #(.MAX_ADDR(WIDTH*HEIGHT/8)) traffic_generator_inst(
         .memrequest_addr         (memrequest_addr),
         .memrequest_en           (memrequest_en),
         .memrequest_write_data   (memrequest_write_data[127:0]),
@@ -246,7 +248,7 @@ module high_definition_frame_buffer(
     // TODO: assign frame_buff_tready
     // This should be done combinationally (either in one-line assign or an always_comb block)
     always_comb begin // XX
-        frame_buff_tready = active_draw_hdmi && ((h_count_hdmi == 1279 && v_count_hdmi == 719) || !frame_buff_tlast); // change me!!
+        frame_buff_tready = active_draw_hdmi && ((h_count_hdmi == WIDTH-1 && v_count_hdmi == HEIGHT-1) || !frame_buff_tlast); // change me!!
     end
 
 

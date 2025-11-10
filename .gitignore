@@ -1,3 +1,4 @@
 .vscode/
 **/sim_build/
 **/_history/
+**/obj/

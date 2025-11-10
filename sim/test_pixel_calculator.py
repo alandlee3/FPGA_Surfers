@@ -45,45 +45,46 @@ async def test_a(dut):
         return color * (2**112) + p1x * (2**96) + p1y * (2**80) + p2x * (2**64) + p2y * (2**48) + p3x * (2**32) + p3y * (2**16) + total_depth
 
     await ClockCycles(dut.clk, 1)
-    dut.xcoord_in.value = 10
-    dut.ycoord_in.value = 15
-    dut.pixel_data_in.value = 57005 * (2**16) + 48879 # deadbeef
-    dut.triangle.value = convert_to_triangle(57069, 1, 1, 35, 80, 17, 10, 15)
-    dut.pixel_in_valid.value = 1
-
-    # move triangle to make pixel not inside, also vary depth (but still behind)
-    await ClockCycles(dut.clk, 1)
-    dut.xcoord_in.value = 10
-    dut.ycoord_in.value = 15
-    dut.pixel_data_in.value = 57005 * (2**16) + 16
-    dut.triangle.value = convert_to_triangle(57069, 10, 10, 35, 80, 17, 10, 15)
-    dut.pixel_in_valid.value = 1
-
-    # move triangle to contain again, but with negative coords
-    await ClockCycles(dut.clk, 1)
-    dut.xcoord_in.value = 10
-    dut.ycoord_in.value = 15
-    dut.pixel_data_in.value = 57005 * (2**16) + 48879 # deadbeef
-    dut.triangle.value = convert_to_triangle(57069, 2**16 - 150, 2**16 - 10, 35, 80, 17, 10, 15)
-    dut.pixel_in_valid.value = 1
-
-    # still in triangle, but now closer to screen
-    await ClockCycles(dut.clk, 1)
-    dut.xcoord_in.value = 10
-    dut.ycoord_in.value = 15
-    dut.pixel_data_in.value = 57005 * (2**16) + 10
-    dut.triangle.value = convert_to_triangle(57069, 2**16 - 150, 2**16 - 10, 35, 80, 17, 10, 15)
-    dut.pixel_in_valid.value = 1
-
-    # still in triangle, but now tied for closeness (thus no update)
-    await ClockCycles(dut.clk, 1)
-    dut.xcoord_in.value = 10
-    dut.ycoord_in.value = 15
-    dut.pixel_data_in.value = 6767 * (2**16) + 15
-    dut.triangle.value = convert_to_triangle(57069, 2**16 - 150, 2**16 - 10, 35, 80, 17, 10, 15)
+    dut.xcoord_in.value = 0
+    dut.ycoord_in.value = 0
+    dut.pixel_data_in.value = 0xFFFF
+    dut.triangle.value = convert_to_triangle(0xFFFF, 50, 0, 150, 50, 200, 200, 10)
     dut.pixel_in_valid.value = 1
 
     await ClockCycles(dut.clk, 3)
+    # # move triangle to make pixel not inside, also vary depth (but still behind)
+    # await ClockCycles(dut.clk, 1)
+    # dut.xcoord_in.value = 10
+    # dut.ycoord_in.value = 15
+    # dut.pixel_data_in.value = 57005 * (2**16) + 16
+    # dut.triangle.value = convert_to_triangle(57069, 10, 10, 35, 80, 17, 10, 15)
+    # dut.pixel_in_valid.value = 1
+
+    # # move triangle to contain again, but with negative coords
+    # await ClockCycles(dut.clk, 1)
+    # dut.xcoord_in.value = 10
+    # dut.ycoord_in.value = 15
+    # dut.pixel_data_in.value = 57005 * (2**16) + 48879 # deadbeef
+    # dut.triangle.value = convert_to_triangle(57069, 2**16 - 150, 2**16 - 10, 35, 80, 17, 10, 15)
+    # dut.pixel_in_valid.value = 1
+
+    # # still in triangle, but now closer to screen
+    # await ClockCycles(dut.clk, 1)
+    # dut.xcoord_in.value = 10
+    # dut.ycoord_in.value = 15
+    # dut.pixel_data_in.value = 57005 * (2**16) + 10
+    # dut.triangle.value = convert_to_triangle(57069, 2**16 - 150, 2**16 - 10, 35, 80, 17, 10, 15)
+    # dut.pixel_in_valid.value = 1
+
+    # # still in triangle, but now tied for closeness (thus no update)
+    # await ClockCycles(dut.clk, 1)
+    # dut.xcoord_in.value = 10
+    # dut.ycoord_in.value = 15
+    # dut.pixel_data_in.value = 6767 * (2**16) + 15
+    # dut.triangle.value = convert_to_triangle(57069, 2**16 - 150, 2**16 - 10, 35, 80, 17, 10, 15)
+    # dut.pixel_in_valid.value = 1
+
+    # await ClockCycles(dut.clk, 3)
 
 def pixel_calculator_runner():
     """Tile Painter Tester."""
