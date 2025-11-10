@@ -35,7 +35,7 @@ async def test_a(dut):
 
     dut.rst.value = 0
 
-    await ClockCycles(dut.clk, 3)
+    await ClockCycles(dut.clk, 1)
 
     # dut.triangle_valid.value = 1
     # dut.triangle.value = convert_to_triangle(0xFF00, 0, 0, 0, 100, 100, 100, 10)
@@ -53,12 +53,12 @@ async def test_a(dut):
     # await ClockCycles(dut.clk, 1)
 
     dut.triangle_valid.value = 1
-    dut.triangle.value = convert_to_triangle(0x00FF, 0, 0, 70, 150, 70, 100, 5)
+    dut.triangle.value = 0xff00000000000000006400640064000a
 
     await ClockCycles(dut.clk, 1)
 
     dut.triangle_valid.value = 1
-    dut.triangle.value = convert_to_triangle(0xFF00, 0, 0, 0, 100, 100, 100, 10)
+    dut.triangle.value = 0x00ff0000000000460096004600640005
 
     # await ClockCycles(dut.clk, 1)
 
@@ -79,7 +79,7 @@ async def test_a(dut):
 
     dut.triangle_valid.value = 0
 
-    await ClockCycles(dut.clk, 10)
+    await ClockCycles(dut.clk, 3)
 
     dut.active.value = 1
 

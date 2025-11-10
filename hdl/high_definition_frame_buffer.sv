@@ -119,7 +119,7 @@ module high_definition_frame_buffer(
 
     // this traffic generator handles reads and writes issued to the MIG IP,
     // which in turn handles the bus to the DDR chip.
-    traffic_generator #(.MAX_ADDR(WIDTH*HEIGHT/8)) traffic_generator_inst(
+    traffic_generator traffic_generator_inst(
         .memrequest_addr         (memrequest_addr),
         .memrequest_en           (memrequest_en),
         .memrequest_write_data   (memrequest_write_data[127:0]),

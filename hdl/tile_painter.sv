@@ -117,7 +117,7 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
     );
 
     assign tile_bram_write_addr = (tile_state == WIPE) ? (y_wipe * 20 + x_wipe) : (y_offset_writing * 20 + x_offset_writing);
-    assign tile_bram_write_data = (tile_state == WIPE) ? 32'hFFFF : writing_pixel_data;
+    assign tile_bram_write_data = (tile_state == WIPE) ? 32'hFFFFFFFF : writing_pixel_data;
     assign tile_bram_write_valid = (tile_state == WIPE) ? 1 : writing_coords_valid;
 
     assign tile_bram_read_addr = y_offset_reading * 20 + x_offset_reading;

@@ -15,7 +15,7 @@
  * using some evt_counters!
  */
 
-module traffic_generator #(parameter MAX_ADDR=115200) (
+module traffic_generator (
         input wire           clk,      // should be ui clk of DDR3!
         input wire           rst,
 
@@ -63,6 +63,8 @@ module traffic_generator #(parameter MAX_ADDR=115200) (
     assign read_request_valid = ~read_axis_af && state == RD_HDMI;
     logic read_request_ready;
     assign read_request_ready = !memrequest_busy && state == RD_HDMI;
+
+    localparam MAX_ADDR = 115200; 
     
     // define the addresses associated with each read or write command+response!
     // you likely want to use an evt_counter that wraps at the right point, and increments

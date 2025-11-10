@@ -117,11 +117,11 @@ module renderer(
     typedef enum {
         RST,
         IDLE,
-        PAINTING_TILES,
-        WRITING_TO_DRAM,
+        PAINTING_TILES, // 2
+        WRITING_TO_DRAM, // 3
         INTERMEDIATE_BEFORE_WIPE_1,
         INTERMEDIATE_BEFORE_WIPE_2,
-        WIPING_TILES,
+        WIPING_TILES, // 6
         INTERMEDIATE_BEFORE_PAINTING_1,
         INTERMEDIATE_BEFORE_PAINTING_2,
         DONE
@@ -145,7 +145,7 @@ module renderer(
     generate
         genvar k;
         for (k = 0; k < N_WAY_PARALLEL; k=k+1) begin
-            tile_painter #(.MAX_TRIANGLES(MAX_TRIANGLES)) tile_painter (
+            tile_painter #(.MAX_TRIANGLES(MAX_TRIANGLES)) tile_painter_inst (
                 .clk(clk),
                 .rst(rst),
 

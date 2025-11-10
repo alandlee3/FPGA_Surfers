@@ -40,11 +40,13 @@ module top_level(
     // shut up those RGBs
     assign rgb0 = 0;
     assign rgb1 = 0;
-    assign led[15:3] = 0;
+    assign led[7] = 0;
     assign ss0_an = 0;
     assign ss1_an = 0;
     assign ss0_c = 0;
     assign ss1_c = 0;
+
+    logic clk_render;
 
     logic [8:0] render_h_count;
     logic [7:0] render_v_count;
@@ -54,15 +56,37 @@ module top_level(
     logic render_active;
     logic render_done;
 
-    logic render_triangle;
+    logic [127:0] render_triangle;
     logic render_triangle_valid;
 
+    logic [3:0] sampled_state;
+
+    logic [31:0] sampling_counter;
+    evt_counter #(.MAX_COUNT(40000000), .WIDTH(32)) sampler_inst (
+        .clk(clk_render),
+        .rst(btn[3]),
+        .evt(1),
+        .count(sampling_counter)
+    );
+
+    always_ff @( posedge clk_render ) begin
+        if (sampling_counter == 0) begin
+            sampled_state <= renderer_inst.state;
+        end
+    end
+
+    assign led[15:12] = sampled_state;
+
+    assign led[6:5] = renderer_inst.num_triangles[1:0];
+
+    assign led[4] = render_pixel[15];
+    assign led[3] = render_h_count[8];
     assign led[2] = render_valid;
     assign led[1] = render_done;
     assign led[0] = render_active;
 
     renderer renderer_inst (
-        .clk(clk_controller),
+        .clk(clk_render),
         .rst(btn[0]),
         .active(render_active),
         .triangle(render_triangle),
@@ -82,6 +106,11 @@ module top_level(
         WRITING_TRIANGLE_1,
         WRITING_TRIANGLE_2,
         WRITING_TRIANGLE_3,
+        WRITING_TRIANGLE_4,
+        WRITING_TRIANGLE_5,
+        WRITING_TRIANGLE_6,
+        WRITING_TRIANGLE_7,
+        WRITING_TRIANGLE_8,
         RENDERING
     } tl_state;
 
@@ -96,12 +125,24 @@ module top_level(
             render_active <= 0;
             state <= WRITING_TRIANGLE_1;
         end else if (state == WRITING_TRIANGLE_1) begin
-            render_triangle_valid <= 1;
-            render_triangle <= 128'hff00000000000000006400640064000a;
             state <= WRITING_TRIANGLE_2;
         end else if(state == WRITING_TRIANGLE_2) begin
             state <= WRITING_TRIANGLE_3;
-        end else if(state == WRITING_TRIANGLE_3) begin
+        end else if (state == WRITING_TRIANGLE_3) begin
+            render_triangle_valid <= 1;
+            render_triangle <= 128'hff00000000000000006400640064000a;
+            state <= WRITING_TRIANGLE_4;
+        end else if (state == WRITING_TRIANGLE_4) begin
+            render_triangle_valid <= 1;
+            render_triangle <= 128'h00ff0000000000460096004600640005;
+            state <= WRITING_TRIANGLE_5;
+        end else if (state == WRITING_TRIANGLE_5) begin
+            state <= WRITING_TRIANGLE_6;
+        end else if(state == WRITING_TRIANGLE_6) begin
+            state <= WRITING_TRIANGLE_7;
+        end else if(state == WRITING_TRIANGLE_7) begin
+            state <= WRITING_TRIANGLE_8;
+        end else if(state == WRITING_TRIANGLE_8) begin
             state <= RENDERING;
             render_active <= 1;
         end else if(state == RENDERING) begin
@@ -119,24 +160,26 @@ module top_level(
     // 2. output connection to the HDMI output
     // 3. the wires that connect to our DRAM chip
 
+    /////////////////////////////////////////////////////////// HDEF FRAME BUFFER
+
     logic [15:0] frame_buff_dram; // data out of DRAM frame buffer
 
     high_definition_frame_buffer highdef_fb(
         // Input data from game
-        .clk_camera      (clk_controller),
+        .clk_camera      (clk_render),
         .sys_rst_camera  (sys_rst_render),
-        .camera_valid    (render_valid),
-        .camera_pixel    (render_pixel),
-        .camera_h_count  (render_h_count),
-        .camera_v_count  (render_v_count),
+        .camera_valid    (0),
+        .camera_pixel    (0),
+        .camera_h_count  (0),
+        .camera_v_count  (0),
         
         // Output data to HDMI display pipeline
         .clk_pixel       (clk_pixel),
         .sys_rst_pixel   (sys_rst_pixel),
-        .active_draw_hdmi(active_draw_hdmi),
-        .h_count_hdmi    (h_count_hdmi),
-        .v_count_hdmi    (v_count_hdmi),
-        .frame_buff_dram (frame_buff_dram),
+        .active_draw_hdmi(0),
+        .h_count_hdmi    (0),
+        .v_count_hdmi    (0),
+        .frame_buff_dram (),
 
         // Clock/reset signals for UberDDR3 controller
         .clk_controller  (clk_controller),
@@ -220,7 +263,9 @@ module top_level(
         .locked(lab06_clk_locked)
     );
 
-    // assign i_ref_clk = clk_camera;
+    assign clk_render = clk_controller;
+
+    // assign i_ref_clk = clk_render;
 
     (* mark_debug = "true" *) wire ddr3_clk_locked;
 
@@ -321,95 +366,78 @@ module top_level(
 
     // logic [15:0] frame_buff_bram; // data out of BRAM frame buffer
     
-    // logic [15:0] frame_buff_raw; // select between the two, based on switch 0
+    logic [15:0] frame_buff_raw; // select between the two, based on switch 0
     // assign frame_buff_raw = sw[0] ? frame_buff_dram : frame_buff_bram;
 
-    // // 1. The old way: BRAM frame buffer.
+    // 1. The old way: BRAM frame buffer.
 
-    // //two-port BRAM used to hold image from camera.
-    // //The camera is producing video at 720p and 30fps, but we can't store all of that
-    // //we're going to down-sample by a factor of 4 in both dimensions
-    // //so we have 320 by 180.  this is kinda a bummer, but we'll fix it
-    // //in future weeks by using off-chip DRAM.
-    // //even with the down-sample, because our camera is producing data at 30fps
-    // //and  our display is running at 720p at 60 fps, there's no hope to have the
-    // //production and consumption of information be synchronized in this system.
-    // //even if we could line it up once, the clocks of both systems will drift over time
-    // //so to avoid this sync issue, we use a conflict-resolution device...the frame buffer
-    // //instead we use a frame buffer as a go-between. The camera sends pixels in at
-    // //its own rate, and we pull them out for display at the 720p rate/requirement
-    // //this avoids the whole sync issue. It will however result in artifacts when you
-    // //introduce fast motion in front of the camera. These lines/tears in the image
-    // //are the result of unsynced frame-rewriting happening while displaying. It won't
-    // //matter for slow movement
-    // localparam FB_DEPTH = 320*180;
-    // localparam FB_SIZE = $clog2(FB_DEPTH);
-    // logic [FB_SIZE-1:0] addra; //used to specify address to write in to frame buffer
+    //two-port BRAM used to hold image from camera.
+    //The camera is producing video at 720p and 30fps, but we can't store all of that
+    //we're going to down-sample by a factor of 4 in both dimensions
+    //so we have 320 by 180.  this is kinda a bummer, but we'll fix it
+    //in future weeks by using off-chip DRAM.
+    //even with the down-sample, because our camera is producing data at 30fps
+    //and  our display is running at 720p at 60 fps, there's no hope to have the
+    //production and consumption of information be synchronized in this system.
+    //even if we could line it up once, the clocks of both systems will drift over time
+    //so to avoid this sync issue, we use a conflict-resolution device...the frame buffer
+    //instead we use a frame buffer as a go-between. The camera sends pixels in at
+    //its own rate, and we pull them out for display at the 720p rate/requirement
+    //this avoids the whole sync issue. It will however result in artifacts when you
+    //introduce fast motion in front of the camera. These lines/tears in the image
+    //are the result of unsynced frame-rewriting happening while displaying. It won't
+    //matter for slow movement
 
-    // logic               valid_camera_mem; //used to enable writing pixel data to frame buffer
-    // logic [15:0]        camera_mem; //used to pass pixel data into frame buffer
+    localparam FB_DEPTH = 320*180;
+    localparam FB_SIZE = $clog2(FB_DEPTH);
+    logic [FB_SIZE-1:0] addra;
+    assign addra = render_v_count * 320 + render_h_count;
 
+    logic [15:0]        camera_mem; //used to pass pixel data into frame buffer
 
-    // // TODO: copy in your subsampling logic from week 5. Used only for the old BRAM way of viewing
-    // always_ff @(posedge clk_camera)begin
-    //   // you already wrote this!
-    //     if(camera_valid) begin
-    //         valid_camera_mem <= (camera_h_count[1:0] == 0) && (camera_v_count[1:0] == 0);
-    //         addra <= camera_h_count[10:2] + (camera_v_count[9:2] * 320);
-    //         camera_mem <= camera_pixel;
-    //   end else begin
-    //         valid_camera_mem <= 0;
-    //   end
-    // end
+    xilinx_true_dual_port_read_first_2_clock_ram #(
+        .RAM_WIDTH(16), //each entry in this memory is 16 bits
+        .RAM_DEPTH(FB_DEPTH)) //there are 320*180 or 57600 entries for full frame
+    frame_buffer (
+        .addra(addra), //pixels are stored using this math
+        .clka(clk_render),
+        .wea(render_valid),
+        .dina(render_pixel),
+        .ena(1'b1),
+        .regcea(1'b1),
+        .rsta(btn[0]),
+        .douta(), //never read from this side
+        .addrb(addrb),//transformed lookup pixel
+        .dinb(16'b0),
+        .clkb(clk_pixel),
+        .web(1'b0),
+        .enb(1'b1),
+        .rstb(btn[0]),
+        .regceb(1'b1),
+        .doutb(frame_buff_raw)
+    );
 
-
-    // xilinx_true_dual_port_read_first_2_clock_ram #(
-    //     .RAM_WIDTH(16), //each entry in this memory is 16 bits
-    //     .RAM_DEPTH(FB_DEPTH)) //there are 320*180 or 57600 entries for full frame
-    // frame_buffer (
-    //     .addra(addra), //pixels are stored using this math
-    //     .clka(clk_camera),
-    //     .wea(valid_camera_mem),
-    //     .dina(camera_mem),
-    //     .ena(1'b1),
-    //     .regcea(1'b1),
-    //     .rsta(sys_rst_camera),
-    //     .douta(), //never read from this side
-    //     .addrb(addrb),//transformed lookup pixel
-    //     .dinb(16'b0),
-    //     .clkb(clk_pixel),
-    //     .web(1'b0),
-    //     .enb(1'b1),
-    //     .rstb(sys_rst_pixel),
-    //     .regceb(1'b1),
-    //     .doutb(frame_buff_bram)
-    // );
-
-    // logic [FB_SIZE-1:0] addrb; //used to lookup address in memory for reading from buffer
+    logic [FB_SIZE-1:0] addrb; //used to lookup address in memory for reading from buffer
     logic               good_addrb; //used to indicate within valid frame for scaling
     
     // // scale logic! copy in only the 4X zoom logic from last week. XX
 
     always_ff @(posedge clk_pixel) begin
         // you already wrote this!
-        // addrb <= (h_count_hdmi >> 2) + 320*(v_count_hdmi >> 2);
-        good_addrb <= (h_count_hdmi<320)&&(v_count_hdmi<180);
+        addrb <= (h_count_hdmi >> 2) + 320*(v_count_hdmi >> 2);
+        good_addrb <= (h_count_hdmi<1280)&&(v_count_hdmi<720);
     end
     
-
-    // 2. The New Way: write memory to DRAM and read it
-    //    out, over a couple AXI-Stream data pipelines.
-
-    // NEW DRAM STUFF ENDS HERE: below here should look familiar from last week!
 
     //split fame_buff into 3 8 bit color channels (5:6:5 adjusted accordingly)
     //remapped frame_buffer outputs with 8 bits for r, g, b
     logic [7:0] red, green, blue;
     always_ff @(posedge clk_pixel)begin
-      red <= good_addrb?{frame_buff_dram[15:11],3'b0}:8'b0;
-      green <= good_addrb?{frame_buff_dram[10:5], 2'b0}:8'b0;
-      blue <= good_addrb?{frame_buff_dram[4:0],3'b0}:8'b0;
+      red <= good_addrb?{frame_buff_raw[15:11],3'b0}:8'b0;
+      green <= good_addrb?{frame_buff_raw[10:5], 2'b0}:8'b0;
+      blue <= good_addrb?{frame_buff_raw[4:0],3'b0}:8'b0;
     end
+
     // // Pixel Processing pre-HDMI output
 
     // // RGB to YCrCb
