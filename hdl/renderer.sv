@@ -51,7 +51,6 @@ module renderer(
             xilinx_true_dual_port_read_first_2_clock_ram #(
                 .RAM_WIDTH(128), //each triangle is 128 bits
                 .RAM_DEPTH(MAX_TRIANGLES))
-                // TODO-1: give INIT_FILE
             triangle_bram (
                 .addra(bram_triangle_in_addr), // a is for writing in triangles!
                 .clka(clk),
