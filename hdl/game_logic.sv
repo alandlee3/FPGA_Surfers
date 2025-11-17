@@ -100,8 +100,24 @@ module game_logic #(
                             game_over <= 1;
                         end
                     end
-                    101: ; // Ramp TODO
-                    110: ; // Moving Car <- currently we do not generate moving cars. TODO
+                    101: begin
+                        // firstrow is only high if we are intersecting halfblock.
+                        // 0-63 implies we are in the 2nd halfblock of a ramp
+                        if (obstacle[10:0] <= 63) begin
+                            ground_level <= GROUND + $signed(HALF_BLOCK_LENGTH/2 + (half_block_progress >> 1));
+                            if (player_height <= GROUND - MARGIN_OF_ERROR + $signed(HALF_BLOCK_LENGTH/2 + (half_block_progress >> 1))) begin
+                                game_over <= 1;
+                            end
+                        end
+                        // 64-127 implies we are in the 1st halfblock of a ramp
+                        else if (obstacle[10:0] <= 127 && obstacle[10:0] >= 64) begin
+                            ground_level <= GROUND + $signed(half_block_progress >> 1);
+                            if (player_height <= GROUND - MARGIN_OF_ERROR + $signed(half_block_progress >> 1)) begin
+                                game_over <= 1;
+                            end
+                        end
+                    end
+                    110: ; // Moving Car <- currently we do not generate moving cars. TODO later
                     default: ;
                 endcase
             end
@@ -144,9 +160,7 @@ module game_logic #(
                         ducking <= 1;
                         ducking_duration <= 1;
                     end else if (airborne) begin
-                        vertical_velocity <= $signed(vertical_velocity - VERTICAL_JUMP);
-                        // TODO: ducking logic if we are airborne (see below)
-                        // also don't assign vertical_velocity here if we end up assigning it below
+                        vertical_velocity <= $signed(-VERTICAL_JUMP);
                     end
                 end
 
@@ -156,8 +170,8 @@ module game_logic #(
                         player_height <= player_height + VERTICAL_JUMP;
                         vertical_velocity <= VERTICAL_JUMP;
                     end
-                end else if (airborne) begin
-                    // airborne-ness
+                end else if (airborne && !duck) begin
+                    // airborne-ness in the absence of ducking
                     if (player_height + new_vertical_velocity < ground_level) begin // hitting ground level
                         if (player_height + new_vertical_velocity >= ground_level - MARGIN_OF_ERROR) begin
                             player_height <= ground_level;
