@@ -8,10 +8,10 @@ module obstacle_generator #(
     input wire rst,
     input wire activate, // one cycle high activate
 
-    output wire valid,
-    output wire first_row,
-    output wire [15:0] obstacle, // 3 bits type, 2 bits lane, 11 bits depth
-    output wire done
+    output logic valid,
+    output logic first_row,
+    output logic [15:0] obstacle, // 3 bits type, 2 bits lane, 11 bits depth (unsigned), the END of the obstacle
+    output logic done
 );
 
     // 16 x 3 array of 4 bit obstacles
@@ -66,14 +66,28 @@ module obstacle_generator #(
     logic [1:0] output_lane;
     logic [3:0] output_block;
 
+    // depth of the end of an obstacle while iterating
+    logic [10:0] depth;
+
+    logic next_cycle_valid;
+
+    assign next_cycle_valid = ( obstacle_storage[0][output_lane][3] == 0) && obstacle_storage[0][output_lane][2:0] != 0;
+
     always_ff @( posedge clk ) begin
         valid <= 0;
+        done <= 0;
         
         if (rst) begin
             state <= RST;
         end else if (state == RST) begin
-            obstacle_storage <= 0;
+            for (int j = 0; j < 3; j=j+1) begin
+                for (int i = 0; i < 16; i=i+1) begin
+                    obstacle_storage[i][j] <= 0;
+                end
+            end
+
             state <= IDLE;
+            current_depth <= 0;
         end else if (state == IDLE) begin
             if (activate) begin
                 state <= OBSTACLE_SHIFT;
@@ -81,7 +95,7 @@ module obstacle_generator #(
         end else if (state == OBSTACLE_SHIFT) begin
             current_depth <= current_depth + SPEED;
 
-            if (current_depth >= TRAIN_DEPTH - SPEED) begin
+            if (current_depth >= HALF_BLOCK - SPEED) begin
 
                 // must shift all obstacles forward
                 for(int j = 0; j < 3; j=j+1) begin
@@ -96,6 +110,10 @@ module obstacle_generator #(
 
             end else begin
                 state <= OUTPUT;
+                output_cycle <= 0;
+                output_lane <= 0;
+                output_block <= 0;
+                depth <= HALF_BLOCK - SPEED - current_depth;
             end
         end else if(state == GENERATION) begin
             
@@ -107,16 +125,18 @@ module obstacle_generator #(
 
 
             for (int j = 0; j < 3; j=j+1) begin
-                if ( rng[5*j+1:5*j] == 0 && obstacle_generator[14][j] == 0 ) begin
+                // if ( rng[5*j+1] == 0 && rng[5*j] == 0 && obstacle_storage[14][j] == 0 ) begin
                     // 1/4 probability, using 5j+1:5j
+
+                if(1) begin
 
                     if (rng[5*j+2] == 0) begin
                         // 1/2 probability, generating a barrier
 
-                        if (rng[5*j+4:5*j+3] == 0) begin
+                        if (rng[5*j+4] == 0 && rng[5*j+3] == 0) begin
                             // 1/4 probability jump barrier
                             obstacle_storage[15][j] <= 4'b1;
-                        end else if (rng[5*j+4:5*j+3] == 1) begin
+                        end else if (rng[5*j+4] == 0 && rng[5*j+3] == 1) begin
                             // 1/4 probability duck barrier
                             obstacle_storage[15][j] <= 4'b10;
                         end else begin
@@ -124,7 +144,7 @@ module obstacle_generator #(
                             obstacle_storage[15][j] <= 4'b11;
                         end
                     end else begin
-                        if (rng[5*j+4:5*j+3] == 0) begin
+                        if (rng[5*j+4] == 0 && rng[5*j+3] == 0) begin
                             // 1/4 probability ramp
                             obstacle_storage[15][j] <= 4'b0101;
                             obstacle_storage[14][j] <= 4'b1101;
@@ -140,24 +160,39 @@ module obstacle_generator #(
             output_cycle <= 0;
             output_lane <= 0;
             output_block <= 0;
+            depth <= HALF_BLOCK - current_depth;
 
         end else if (state == OUTPUT) begin
             
             if (output_cycle < CYCLES_PER_OBSTACLE-1) begin
                 output_cycle <= output_cycle + 1;
             end else begin
-                output_cycle <= 0;
+
+                if (next_cycle_valid) begin
+                    output_cycle <= 0;
+                end
 
                 // output here!
-                // xxxx
-                valid <= 1;
-                ////// problem: by storing half-blocks, sometimes we're cooked at first row
-                obstacle <= { obstacle_storage[0][output_lane], output_lane,  }
+
+                // Output only if we're dealing with the latter half of the obstacle!
+                valid <= next_cycle_valid;
+                obstacle <= { obstacle_storage[0][output_lane][2:0], output_lane, depth };
+                first_row <= output_block == 0 || (output_block == 1 && obstacle_storage[0][output_lane][2]);
 
                 if (output_lane < 2) begin
                     output_lane <= output_lane + 1;
                 end else begin
                     output_lane <= 0;
+                    depth <= depth + HALF_BLOCK;
+
+                    // shift obstacles forward
+                    for(int j = 0; j < 3; j=j+1) begin
+                        for (int i = 0; i < 15; i=i+1) begin
+                            obstacle_storage[i][j] <= obstacle_storage[i+1][j];
+                        end
+
+                        obstacle_storage[15][j] <= obstacle_storage[0][j];
+                    end
 
                     if (output_block < 15) begin
                         output_block <= output_block + 1;
@@ -170,6 +205,12 @@ module obstacle_generator #(
                 end
             end
 
+        end else if (state == DONE) begin
+            done <= 1;
+
+            if(activate) begin
+                state <= OBSTACLE_SHIFT;
+            end
         end
     end
 
