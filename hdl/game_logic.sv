@@ -26,9 +26,8 @@ module game_logic #(
     );
 
     // high level:
-    // big boi fsm
     // ducking supersedes jumping in priority if applied together
-    // can interrupt jump with duck, but not duck with jump 
+    // can interrupt jump with duck and duck with jump
 
     // lots of state variables
     // [15:0] player_height already above
@@ -65,6 +64,7 @@ module game_logic #(
             vertical_velocity <= 0;
             half_block_progress <= 0;
         end else begin
+            // OBSTACLE PROCESSING
             if (obstacle_valid && firstrow && obstacle[12:11] == player_lane && !game_over) begin
                 case(obstacle[15:13])
                     000: ground_level <= $signed(GROUND); // empty block
@@ -122,6 +122,7 @@ module game_logic #(
                 endcase
             end
 
+            // GAME PROGRESSION
             if (new_frame && !game_over) begin
                 // player moves forward
                 player_score <= player_score + SPEED;
@@ -138,41 +139,44 @@ module game_logic #(
                     player_lane <= player_lane + 1;
                 end
 
-                // ducking/ducking duration
+                // DUCKING
                 if (ducking) begin
-                    if (ducking_duration <= DUCK_LIMIT - 1) begin
+                    // 3. jumping out of ducking
+                    if (jump) begin
+                        ducking <= 0;
+                        player_height <= player_height + VERTICAL_JUMP;
+                        vertical_velocity <= VERTICAL_JUMP;
+                    end
+
+                    else if (ducking_duration <= DUCK_LIMIT - 1) begin
                         // player has no control over ducking for a while after ducking
                         ducking_duration <= ducking_duration + 1;
+                        player_height <= ground_level;
                     end else begin
+                        player_height <= ground_level;
                         if (duck) begin
-                            // immediately restart ducking 
+                            // 2. more ducking
                             ducking <= 1;
                             ducking_duration <= 1;
                         end else begin 
-                            // no more ducking
+                            // 1. doing nothing
                             ducking_duration <= 0;
                             ducking <= 0;
                         end
                     end
-                end else if (duck && !ducking) begin
-                    if (!airborne) begin
-                        // initiate ducking
-                        ducking <= 1;
-                        ducking_duration <= 1;
-                    end else if (airborne) begin
-                        vertical_velocity <= $signed(-VERTICAL_JUMP);
-                    end
                 end
 
-                // jumping
-                if (!airborne) begin
-                    if (jump) begin
-                        player_height <= player_height + VERTICAL_JUMP;
-                        vertical_velocity <= VERTICAL_JUMP;
+                // AIRBORNE
+                else if (airborne) begin
+                    // 2. ducking
+                    if (duck) begin
+                        vertical_velocity <= $signed(-VERTICAL_JUMP);
+                        player_height <= player_height + $signed(-VERTICAL_JUMP);
                     end
-                end else if (airborne && !duck) begin
-                    // airborne-ness in the absence of ducking
-                    if (player_height + new_vertical_velocity < ground_level) begin // hitting ground level
+
+                    // 1. doing nothing
+                    // 3. trying to jump again --> transition to running state and then re-jump
+                    else if (player_height + new_vertical_velocity < ground_level) begin // hitting ground level
                         if (player_height + new_vertical_velocity >= ground_level - MARGIN_OF_ERROR) begin
                             player_height <= ground_level;
                             vertical_velocity <= 0;
@@ -184,17 +188,31 @@ module game_logic #(
                         player_height <= player_height + new_vertical_velocity;
                     end
                 end
+
+                // PLAIN RUNNING
+                else begin
+                    // 2. ducking
+                    if (duck) begin
+                        player_height <= ground_level;
+                        // initiate ducking
+                        ducking <= 1;
+                        ducking_duration <= 1;
+                    end
+
+                    // 3. jumping
+                    else if (jump) begin
+                        player_height <= player_height + VERTICAL_JUMP;
+                        vertical_velocity <= VERTICAL_JUMP;
+                    end
+
+                    // 1. doing nothing
+                    else begin
+                        player_height <= ground_level;
+                    end
+                end
             end
         end
     end
-
-    // sample pipeline stuff
-    // pipeline #(.WIDTH(1), .STAGES_NEEDED(16) ) xdiv_p
-    // (
-    //     .clk(clk),
-    //     .in(xcoordneg),
-    //     .out(xcoordneg_div)
-    // );
     
 endmodule
 
