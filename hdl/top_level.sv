@@ -94,7 +94,7 @@ module top_level(
 
     assign ddr3_clk_locked = lab06_clk_locked;
 
-    ///////////////////////////////////////// OBSTACLE GENERATION //////////////////////////////////////////////////////////////////
+     ///////////////////////////////////////// OBSTACLE GENERATION //////////////////////////////////////////////////////////////////
     logic new_frame; // TODO: need to wire up to something to be single-cycle high at start of each frame
     logic [15:0] obstacle;
     logic obstacle_valid;
@@ -202,12 +202,11 @@ module top_level(
     } tl_state;
 
     tl_state state;
-    
 
     always_ff @( posedge clk_render ) begin
         render_triangle_valid <= 0;
 
-        if(sw[15]) begin
+        if(btn[0]) begin
             state <= RST;
         end else if (state == RST) begin
             render_active <= 0;
@@ -216,27 +215,27 @@ module top_level(
             state <= WRITING_TRIANGLE_2;
         end else if(state == WRITING_TRIANGLE_2) begin
             render_triangle_valid <= sw[0];
-            render_triangle <= 128'ha005a006e005a004b00460096000a;
+            render_triangle <= 128'haedd0050006400320064005000a0000a;
             state <= WRITING_TRIANGLE_3;
         end else if (state == WRITING_TRIANGLE_3) begin
             render_triangle_valid <= sw[1];
-            render_triangle <= 128'hff00000000000000006400640064000a;
+            render_triangle <= 128'haedd003200a000320064005000a0000a;
             state <= WRITING_TRIANGLE_4;
         end else if (state == WRITING_TRIANGLE_4) begin
             render_triangle_valid <= sw[2];
-            render_triangle <= 128'h00ff0000000000460096004600640005;
+            render_triangle <= 128'hf7de0032006400500064005000320012;
             state <= WRITING_TRIANGLE_5;
         end else if (state == WRITING_TRIANGLE_5) begin
             render_triangle_valid <= sw[3];
-            render_triangle <= 128'h80000a00000014000b4000000b40032;
+            render_triangle <= 128'hf7de0064003200500064005000320012;
             state <= WRITING_TRIANGLE_6;
         end else if(state == WRITING_TRIANGLE_6) begin
             render_triangle_valid <= sw[4];
-            render_triangle <= 128'hffff003200000096003200c800c8000a;
+            render_triangle <= 128'h8e3b005000a00064006e005000640013;
             state <= WRITING_TRIANGLE_7;
         end else if(state == WRITING_TRIANGLE_7) begin
             render_triangle_valid <= sw[5];
-            render_triangle <= 128'h8ff00460096005a006e00460064000a;
+            render_triangle <= 128'h8e3b006400320064006e005000640011;
             state <= WRITING_TRIANGLE_8;
         end else if(state == WRITING_TRIANGLE_8) begin
             state <= RENDERING;
@@ -513,4 +512,3 @@ endmodule // top_level
 
 
 `default_nettype wire
-

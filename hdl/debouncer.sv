@@ -12,8 +12,8 @@ module  debouncer #(parameter CLK_PERIOD_NS = 10,
         output logic clean
     );
     //you will likely need to cast this:
-    parameter COUNTER_MAX = int'($ceil(DEBOUNCE_TIME_MS*1_000_000/CLK_PERIOD_NS));
-    parameter COUNTER_SIZE = $clog2(COUNTER_MAX);
+    localparam COUNTER_MAX = int'($ceil(DEBOUNCE_TIME_MS*1_000_000/CLK_PERIOD_NS));
+    localparam COUNTER_SIZE = $clog2(COUNTER_MAX);
     logic [COUNTER_SIZE-1:0] counter;
     logic current; //register holds current output
     logic old_dirty;

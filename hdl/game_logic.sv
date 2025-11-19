@@ -6,7 +6,7 @@ module game_logic #(
         parameter DUCK_LIMIT = 15, // how long a duck lasts for
         parameter VERTICAL_JUMP = 10, // how much vertical velocity a jump gives
         parameter SPEED = 4, // how many "score points" we move up per frame, MUST divide HALF_BLOCK_LENGTH/2
-        parameter GROUND = -128 // where the floor of the game is (no train car)
+        parameter GROUND = -128, // where the floor of the game is (no train car)
         parameter MARGIN_OF_ERROR = 10 // how below the ground level of a train car we can be without dying
     )(
         input wire clk,
