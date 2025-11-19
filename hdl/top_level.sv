@@ -94,6 +94,69 @@ module top_level(
 
     assign ddr3_clk_locked = lab06_clk_locked;
 
+    ///////////////////////////////////////// OBSTACLE GENERATION //////////////////////////////////////////////////////////////////
+    logic new_frame; // TODO: need to wire up to something to be single-cycle high at start of each frame
+    logic [15:0] obstacle;
+    logic obstacle_valid;
+    logic firstrow;
+    logic obstacles_done;
+    
+    obstacle_generator #(.CYCLES_PER_OBSTACLE(30)) obs_gen (
+        .clk(clk_render)
+        .rst(state == RST)
+        .activate(new_frame), // one cycle high activate
+
+        .valid(obstacle_valid),
+        .first_row(firstrow),
+        .obstacle(obstacle), // 3 bits type, 2 bits lane, 11 bits depth (unsigned), the END of the obstacle
+        .done(obstacles_done) // TODO: to be wired to 3d projection
+    )
+
+    ///////////////////////////////////////// GAME LOGIC //////////////////////////////////////////////////////////////////
+    logic [3:0] clean_controls; // left, duck, jump, right in that order
+
+    logic game_over;
+    logic [1:0] player_lane;
+    logic signed [15:0] player_height;
+    logic [15:0] player_score;
+
+    generate
+        genvar d;
+        for (d = 0; d < 4; d=d+1) begin
+            debouncer #(.CLK_PERIOD_NS(12),
+                        .DEBOUNCE_TIME_MS(5)) game_debouncers
+                (.clk(clk_render),
+                .rst(state == RST),
+                .dirty(btn[d]),
+                .clean(clean_controls[d]));
+        end
+    endgenerate
+
+    game_logic #(
+        .HALF_BLOCK_LENGTH(64), // length in "score points" of half block
+        .GRAVITY(3), // how much vertical velocity decreases per frame
+        .DUCK_LIMIT(15), // how long a duck lasts for
+        .VERTICAL_JUMP(10), // how much vertical velocity a jump gives
+        .SPEED(4), // how many "score points" we move up per frame, MUST divide HALF_BLOCK_LENGTH/2
+        .GROUND(-128) // where the floor of the game is (no train car)
+        .MARGIN_OF_ERROR(10) // how below the ground level of a train car we can be without dying
+    ) game (
+        .clk(clk),
+        .rst(state == RST),
+        .new_frame(new_frame),
+        .obstacle(obstacle),
+        .obstacle_valid(obstacle_valid),
+        .duck(clean_controls[2]),
+        .jump(clean_controls[1]),
+        .left(clean_controls[3]),
+        .right(clean_controls[0]),
+        .firstrow(firstrow), // high only if obstacle is in the first row (valid to check collisions)
+        .game_over(game_over),
+        .player_lane(player_lane),
+        .player_height(player_height),
+        .player_score(player_score)
+    );
+
     ///////////////////////////////////////// RENDERING //////////////////////////////////////////////////////////////////
 
     logic [8:0] render_h_count;
@@ -139,11 +202,12 @@ module top_level(
     } tl_state;
 
     tl_state state;
+    
 
     always_ff @( posedge clk_render ) begin
         render_triangle_valid <= 0;
 
-        if(btn[0]) begin
+        if(sw[15]) begin
             state <= RST;
         end else if (state == RST) begin
             render_active <= 0;
