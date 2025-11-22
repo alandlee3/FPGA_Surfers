@@ -210,6 +210,8 @@ module game_logic #(
                         player_height <= ground_level;
                     end
                 end
+
+                ground_level <= $signed(GROUND); // set as default for next frame, unless an obstacle is detected
             end
         end
     end
