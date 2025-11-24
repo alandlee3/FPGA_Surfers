@@ -94,6 +94,69 @@ module top_level(
 
     assign ddr3_clk_locked = lab06_clk_locked;
 
+     ///////////////////////////////////////// OBSTACLE GENERATION //////////////////////////////////////////////////////////////////
+    logic new_frame; // TODO: need to wire up to something to be single-cycle high at start of each frame
+    logic [15:0] obstacle;
+    logic obstacle_valid;
+    logic firstrow;
+    logic obstacles_done;
+    
+    obstacle_generator #(.CYCLES_PER_OBSTACLE(30)) obs_gen (
+        .clk(clk_render)
+        .rst(state == RST)
+        .activate(new_frame), // one cycle high activate
+
+        .valid(obstacle_valid),
+        .first_row(firstrow),
+        .obstacle(obstacle), // 3 bits type, 2 bits lane, 11 bits depth (unsigned), the END of the obstacle
+        .done(obstacles_done) // TODO: to be wired to 3d projection
+    )
+
+    ///////////////////////////////////////// GAME LOGIC //////////////////////////////////////////////////////////////////
+    logic [3:0] clean_controls; // left, duck, jump, right in that order
+
+    logic game_over;
+    logic [1:0] player_lane;
+    logic signed [15:0] player_height;
+    logic [15:0] player_score;
+
+    generate
+        genvar d;
+        for (d = 0; d < 4; d=d+1) begin
+            debouncer #(.CLK_PERIOD_NS(12),
+                        .DEBOUNCE_TIME_MS(5)) game_debouncers
+                (.clk(clk_render),
+                .rst(state == RST),
+                .dirty(btn[d]),
+                .clean(clean_controls[d]));
+        end
+    endgenerate
+
+    game_logic #(
+        .HALF_BLOCK_LENGTH(64), // length in "score points" of half block
+        .GRAVITY(3), // how much vertical velocity decreases per frame
+        .DUCK_LIMIT(15), // how long a duck lasts for
+        .VERTICAL_JUMP(10), // how much vertical velocity a jump gives
+        .SPEED(4), // how many "score points" we move up per frame, MUST divide HALF_BLOCK_LENGTH/2
+        .GROUND(-128) // where the floor of the game is (no train car)
+        .MARGIN_OF_ERROR(10) // how below the ground level of a train car we can be without dying
+    ) game (
+        .clk(clk),
+        .rst(state == RST),
+        .new_frame(new_frame),
+        .obstacle(obstacle),
+        .obstacle_valid(obstacle_valid),
+        .duck(clean_controls[2]),
+        .jump(clean_controls[1]),
+        .left(clean_controls[3]),
+        .right(clean_controls[0]),
+        .firstrow(firstrow), // high only if obstacle is in the first row (valid to check collisions)
+        .game_over(game_over),
+        .player_lane(player_lane),
+        .player_height(player_height),
+        .player_score(player_score)
+    );
+
     ///////////////////////////////////////// RENDERING //////////////////////////////////////////////////////////////////
 
     logic [8:0] render_h_count;
@@ -152,27 +215,27 @@ module top_level(
             state <= WRITING_TRIANGLE_2;
         end else if(state == WRITING_TRIANGLE_2) begin
             render_triangle_valid <= sw[0];
-            render_triangle <= 128'ha005a006e005a004b00460096000a;
+            render_triangle <= 128'haedd0050006400320064005000a0000a;
             state <= WRITING_TRIANGLE_3;
         end else if (state == WRITING_TRIANGLE_3) begin
             render_triangle_valid <= sw[1];
-            render_triangle <= 128'hff00000000000000006400640064000a;
+            render_triangle <= 128'haedd003200a000320064005000a0000a;
             state <= WRITING_TRIANGLE_4;
         end else if (state == WRITING_TRIANGLE_4) begin
             render_triangle_valid <= sw[2];
-            render_triangle <= 128'h00ff0000000000460096004600640005;
+            render_triangle <= 128'hf7de0032006400500064005000320012;
             state <= WRITING_TRIANGLE_5;
         end else if (state == WRITING_TRIANGLE_5) begin
             render_triangle_valid <= sw[3];
-            render_triangle <= 128'h80000a00000014000b4000000b40032;
+            render_triangle <= 128'hf7de0064003200500064005000320012;
             state <= WRITING_TRIANGLE_6;
         end else if(state == WRITING_TRIANGLE_6) begin
             render_triangle_valid <= sw[4];
-            render_triangle <= 128'hffff003200000096003200c800c8000a;
+            render_triangle <= 128'h8e3b005000a00064006e005000640013;
             state <= WRITING_TRIANGLE_7;
         end else if(state == WRITING_TRIANGLE_7) begin
             render_triangle_valid <= sw[5];
-            render_triangle <= 128'h8ff00460096005a006e00460064000a;
+            render_triangle <= 128'h8e3b006400320064006e005000640011;
             state <= WRITING_TRIANGLE_8;
         end else if(state == WRITING_TRIANGLE_8) begin
             state <= RENDERING;
@@ -449,4 +512,3 @@ endmodule // top_level
 
 
 `default_nettype wire
-
