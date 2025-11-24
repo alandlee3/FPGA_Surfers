@@ -125,10 +125,8 @@ module obstacle_generator #(
 
 
             for (int j = 0; j < 3; j=j+1) begin
-                // if ( rng[5*j+1] == 0 && rng[5*j] == 0 && obstacle_storage[14][j] == 0 ) begin
+                if ( rng[5*j+1] == 0 && rng[5*j] == 0 && obstacle_storage[14][j] == 0 ) begin
                     // 1/4 probability, using 5j+1:5j
-
-                if(1) begin
 
                     if (rng[5*j+2] == 0) begin
                         // 1/2 probability, generating a barrier
