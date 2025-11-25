@@ -5,7 +5,7 @@
 // we get a vertex inputs which are still (0,0) at center of screen, so need to offset
 // all coordinates by (WIDTH/2, HEIGHT/2).
 module ddd_projector #(
-        parameter LOG_Z0 = 5,
+        parameter LOG_Z0 = 7,
         parameter WIDTH = 320,
         parameter HEIGHT = 180
     )(

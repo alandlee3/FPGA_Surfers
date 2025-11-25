@@ -18,6 +18,7 @@ module triangle_creator (
     // output vertices of each triangle one at a time
     // this means for each obstacle, may need up to 8 triangles --> 24 cycles, hopefully consecutively
 
+    localparam signed [15:0] Z_OFFSET = 64;
     /*
     Types of obstacles:
     000 - No Obstacle
@@ -61,7 +62,7 @@ module triangle_creator (
 
     localparam signed [15:0] MINZ = 8;
 
-    assign vertex = { vertex_x, vertex_y, vertex_z < MINZ ? MINZ : vertex_z };
+    assign vertex = { vertex_x, vertex_y, vertex_z < MINZ ? (MINZ+Z_OFFSET) : (vertex_z+Z_OFFSET) };
 
     always_ff @(posedge clk) begin
         done_out <= 0;
@@ -220,19 +221,19 @@ module triangle_creator (
                     // left side of car!
 
                     vertex_x <= lane_left;
-                    vertex_y <= TOP;
+                    vertex_y <= GROUND;
                     vertex_z <= obstacle_depth - 128;
                 end else if(vertex_counter == 7) begin
                     vertex_x <= lane_left;
                     vertex_y <= TOP;
-                    vertex_z <= obstacle_depth;
+                    vertex_z <= obstacle_depth - 128;
                 end else if(vertex_counter == 8) begin
                     vertex_x <= lane_left;
                     vertex_y <= GROUND;
-                    vertex_z <= obstacle_depth - 128;
+                    vertex_z <= obstacle_depth;
                 end else if(vertex_counter == 9) begin
                     vertex_x <= lane_left;
-                    vertex_y <= GROUND;
+                    vertex_y <= TOP;
                     vertex_z <= obstacle_depth - 128;
                 end else if(vertex_counter == 10) begin
                     vertex_x <= lane_left;

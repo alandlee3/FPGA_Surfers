@@ -40,7 +40,11 @@ module obstacle_generator #(
     logic [17:0] rng;
 
     always_ff @( posedge clk ) begin
-        rng <= rng + 18'h3a039; // some random shit
+        if(rst) begin
+            rng <= 0;
+        end else begin
+            rng <= rng + 18'h3a039; // some random shit
+        end
     end
 
     /////////// FSM
@@ -126,6 +130,7 @@ module obstacle_generator #(
 
             for (int j = 0; j < 3; j=j+1) begin
                 if ( rng[5*j+1] == 0 && rng[5*j] == 0 && obstacle_storage[14][j] == 0 ) begin
+                // if (1) begin
                     // 1/4 probability, using 5j+1:5j
 
                     if (rng[5*j+2] == 0) begin

@@ -102,15 +102,31 @@ module top_level(
     logic obstacles_done;
     
     obstacle_generator #(.CYCLES_PER_OBSTACLE(30)) obs_gen (
-        .clk(clk_render)
-        .rst(state == RST)
+        .clk(clk_render),
+        .rst(state == RST),
         .activate(new_frame), // one cycle high activate
 
         .valid(obstacle_valid),
         .first_row(firstrow),
         .obstacle(obstacle), // 3 bits type, 2 bits lane, 11 bits depth (unsigned), the END of the obstacle
-        .done(obstacles_done) // TODO: to be wired to 3d projection
-    )
+        .done(obstacles_done) // wired to 3d projection
+    );
+
+    ////////////////////////////////////////////// PROJECTION /////////////////////////////////////////////////////////////
+
+    logic projector_done;
+
+    full_projector full_projector_inst (
+        .clk(clk_render),
+        .rst(state == RST),
+        .obstacle(obstacle),
+        .obstacle_valid(obstacle_valid),
+        .done_in(obstacles_done),
+
+        .triangle(render_triangle),
+        .triangle_valid(render_triangle_valid),
+        .done_out(projector_done)
+    );
 
     ///////////////////////////////////////// GAME LOGIC //////////////////////////////////////////////////////////////////
     logic [3:0] clean_controls; // left, duck, jump, right in that order
@@ -138,10 +154,10 @@ module top_level(
         .DUCK_LIMIT(15), // how long a duck lasts for
         .VERTICAL_JUMP(10), // how much vertical velocity a jump gives
         .SPEED(4), // how many "score points" we move up per frame, MUST divide HALF_BLOCK_LENGTH/2
-        .GROUND(-128) // where the floor of the game is (no train car)
+        .GROUND(-128), // where the floor of the game is (no train car)
         .MARGIN_OF_ERROR(10) // how below the ground level of a train car we can be without dying
     ) game (
-        .clk(clk),
+        .clk(clk_render),
         .rst(state == RST),
         .new_frame(new_frame),
         .obstacle(obstacle),
@@ -190,59 +206,39 @@ module top_level(
 
     typedef enum { 
         RST,
-        WRITING_TRIANGLE_1,
-        WRITING_TRIANGLE_2,
-        WRITING_TRIANGLE_3,
-        WRITING_TRIANGLE_4,
-        WRITING_TRIANGLE_5,
-        WRITING_TRIANGLE_6,
-        WRITING_TRIANGLE_7,
-        WRITING_TRIANGLE_8,
+        START,
+        WAIT1,
+        WAIT2,
+        GENERATION,
         RENDERING
     } tl_state;
 
     tl_state state;
 
     always_ff @( posedge clk_render ) begin
-        render_triangle_valid <= 0;
+        new_frame <= 0;
 
         if(btn[0]) begin
             state <= RST;
         end else if (state == RST) begin
             render_active <= 0;
-            state <= WRITING_TRIANGLE_1;
-        end else if (state == WRITING_TRIANGLE_1) begin
-            state <= WRITING_TRIANGLE_2;
-        end else if(state == WRITING_TRIANGLE_2) begin
-            render_triangle_valid <= sw[0];
-            render_triangle <= 128'haedd0050006400320064005000a0000a;
-            state <= WRITING_TRIANGLE_3;
-        end else if (state == WRITING_TRIANGLE_3) begin
-            render_triangle_valid <= sw[1];
-            render_triangle <= 128'haedd003200a000320064005000a0000a;
-            state <= WRITING_TRIANGLE_4;
-        end else if (state == WRITING_TRIANGLE_4) begin
-            render_triangle_valid <= sw[2];
-            render_triangle <= 128'hf7de0032006400500064005000320012;
-            state <= WRITING_TRIANGLE_5;
-        end else if (state == WRITING_TRIANGLE_5) begin
-            render_triangle_valid <= sw[3];
-            render_triangle <= 128'hf7de0064003200500064005000320012;
-            state <= WRITING_TRIANGLE_6;
-        end else if(state == WRITING_TRIANGLE_6) begin
-            render_triangle_valid <= sw[4];
-            render_triangle <= 128'h8e3b005000a00064006e005000640013;
-            state <= WRITING_TRIANGLE_7;
-        end else if(state == WRITING_TRIANGLE_7) begin
-            render_triangle_valid <= sw[5];
-            render_triangle <= 128'h8e3b006400320064006e005000640011;
-            state <= WRITING_TRIANGLE_8;
-        end else if(state == WRITING_TRIANGLE_8) begin
-            state <= RENDERING;
-            render_active <= 1;
+            state <= START;
+        end else if (state == START) begin
+            render_active <= 0;
+            state <= GENERATION;
+            new_frame <= 1;
+        end else if(state == WAIT1) begin
+            state <= WAIT2; // new_frame high here, state goes to obstacle_shift
+        end else if(state == WAIT2) begin
+            state <= GENERATION; // state is obstacle shift, but now done is finally set to 0
+        end else if(state == GENERATION) begin
+            if(projector_done) begin
+                state <= RENDERING;
+                render_active <= 1;
+            end
         end else if(state == RENDERING) begin
             if (render_done) begin
-                state <= RST;
+                state <= START;
             end
         end
     end
@@ -471,13 +467,20 @@ module top_level(
         .count(sampling_counter)
     );
 
+    logic [15:0] last_valid_obstacle;
+    logic [15:0] sampled_obstacle;
+
     always_ff @( posedge clk_render ) begin
         if (sampling_counter == 0) begin
             sampled_state <= renderer_inst.state;
             sampled_frame_rate <= frame_rate;
             frame_rate <= 0;
+            sampled_obstacle <= last_valid_obstacle;
         end else begin
-            if (state == WRITING_TRIANGLE_1) begin
+            if(obstacle_valid) begin
+                last_valid_obstacle <= obstacle;
+            end
+            if (state == START) begin
                 frame_rate <= frame_rate + 1;
             end
         end
@@ -488,7 +491,7 @@ module top_level(
     seven_segment_controller mssc(
      .clk(clk_render),
      .rst(sys_rst_render),
-     .val({16'b0, sampled_frame_rate}),
+     .val({sampled_obstacle, sampled_frame_rate}),
      .cat(ss_c),
      .an({ss0_an, ss1_an})
      );
@@ -496,16 +499,17 @@ module top_level(
     assign ss0_c = ss_c; //control upper four digit's cathodes!
     assign ss1_c = ss_c; //same as above but for lower four digits!
 
+    // assign led[3:0] = obs_gen.obstacle_storage[15][0];
+    // assign led[9:4] = num_obstacles;
 
-
-    assign led[15:12] = sampled_state;
-    assign led[7] = 0;
-    assign led[6:5] = renderer_inst.num_triangles[1:0];
-    assign led[4] = render_pixel[15];
-    assign led[3] = render_h_count[8];
-    assign led[2] = render_valid;
-    assign led[1] = render_done;
-    assign led[0] = render_active;
+    // assign led[15:12] = sampled_state;
+    // assign led[7] = 0;
+    assign led[7:0] = renderer_inst.num_triangles[7:0];
+    // assign led[4] = render_pixel[15];
+    // assign led[3] = render_h_count[8];
+    // assign led[2] = render_valid;
+    // assign led[1] = render_done;
+    // assign led[0] = render_active;
     
 
 endmodule // top_level

@@ -31,7 +31,7 @@ async def test_a(dut):
 
     await ClockCycles(dut.clk, 3)
 
-    for _ in range(20):
+    for _ in range(100):
         dut.activate.value = 1
 
         await ClockCycles(dut.clk, 1)
