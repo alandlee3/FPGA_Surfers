@@ -61,14 +61,18 @@ module pixel_calculator (
     // additional buffers for combinational logic
     logic [15:0] total_depth_buff, color_data_buff, depth_data_buff, triangle_color_buff;
 
+    // ignore coloring if triangle is degenerate (vertically)
+    logic points_form_vertical_line;
+
     // check if pixel is in triangle AND triangle is closer to screen than last pixel triangle
     always_comb begin
         if (!rst) begin
-            if ((total_depth_buff < depth_data_buff) && ((c11 - c12 >= 0 && c21 - c22 >= 0 && c31 - c32 >= 0) || (c11 - c12 <= 0 && c21 - c22 <= 0 && c31 - c32 <= 0))) begin
+            if ((total_depth_buff < depth_data_buff) && (!points_form_vertical_line) && ((c11 - c12 >= 0 && c21 - c22 >= 0 && c31 - c32 >= 0) || (c11 - c12 <= 0 && c21 - c22 <= 0 && c31 - c32 <= 0))) begin
                 pixel_data_out = {triangle_color_buff, total_depth_buff};
             end else begin
                 pixel_data_out = {color_data_buff, depth_data_buff};
             end
+            points_form_vertical_line = (p1x == p2x) && (p2x == p3x);
         end else begin
             pixel_data_out = 0;
         end
