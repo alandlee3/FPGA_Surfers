@@ -207,13 +207,15 @@ module top_level(
     typedef enum { 
         RST,
         START,
-        WAIT1,
+        WAIT, // must wait like 30 cycles for done signal to clear out
         WAIT2,
         GENERATION,
         RENDERING
     } tl_state;
 
     tl_state state;
+
+    logic [6:0] wait_counter;
 
     always_ff @( posedge clk_render ) begin
         new_frame <= 0;
@@ -225,12 +227,15 @@ module top_level(
             state <= START;
         end else if (state == START) begin
             render_active <= 0;
-            state <= GENERATION;
+            state <= WAIT;
             new_frame <= 1;
-        end else if(state == WAIT1) begin
-            state <= WAIT2; // new_frame high here, state goes to obstacle_shift
-        end else if(state == WAIT2) begin
-            state <= GENERATION; // state is obstacle shift, but now done is finally set to 0
+            wait_counter <= 0;
+        end else if(state == WAIT) begin
+            wait_counter <= wait_counter + 1;
+            
+            if(wait_counter == 100) begin
+                state <= GENERATION;
+            end
         end else if(state == GENERATION) begin
             if(projector_done) begin
                 state <= RENDERING;
