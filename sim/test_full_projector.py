@@ -35,6 +35,8 @@ async def test_a(dut):
     dut.obstacle_valid.value = 0
     dut.done_in.value = 0
     dut.obstacle.value = 0
+    dut.player_height.value = 2**16-128
+    dut.player_lane.value = 1
 
     await ClockCycles(dut.clk, 3)
 
@@ -57,7 +59,7 @@ async def test_a(dut):
 
     dut.done_in.value = 1
 
-    for _ in range(50):
+    for _ in range(200):
         await read_clock_cycle(dut)
 
     with open("test_projector_list.txt", "w") as file:
@@ -93,7 +95,7 @@ def projector_runner():
     sim = os.getenv("SIM","vivado")
     proj_path = Path(__file__).resolve().parent.parent
     sys.path.append(str(proj_path / "sim" / "model"))
-    sources = [proj_path / "hdl" / "full_projector.sv", proj_path / "hdl" / "triangle_creator.sv", proj_path / "hdl" / "ddd_projector.sv", proj_path / "hdl" / "pipeline.sv", proj_path / "hdl" / "divider3.sv"]
+    sources = [proj_path / "hdl" / "full_projector.sv", proj_path / "hdl" / "triangle_creator.sv", proj_path / "hdl" / "ddd_projector.sv", proj_path / "hdl" / "pipeline.sv", proj_path / "hdl" / "divider3.sv", proj_path / "hdl" / "sprite_creator.sv"]
     build_test_args = ["-Wall"]
     #values for parameters defined earlier in the code.
     # parameters = { 'KERNEL_DIMENSION': 3, 'K_SELECT': 2} # sharpen for now

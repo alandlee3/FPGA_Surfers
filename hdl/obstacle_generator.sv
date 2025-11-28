@@ -2,7 +2,8 @@
 `default_nettype none
 
 module obstacle_generator #(
-    parameter CYCLES_PER_OBSTACLE = 30
+    parameter CYCLES_PER_OBSTACLE = 30,
+    parameter SPEED = 1
 ) (
     input wire clk,
     input wire rst,
@@ -49,7 +50,6 @@ module obstacle_generator #(
 
     /////////// FSM
 
-    localparam SPEED = 4;
     localparam HALF_BLOCK = 64;
     localparam LOG_HALF_BLOCK = $clog2(HALF_BLOCK);
     localparam LOG_CYCLES = $clog2(CYCLES_PER_OBSTACLE);
@@ -180,7 +180,7 @@ module obstacle_generator #(
                 // Output only if we're dealing with the latter half of the obstacle!
                 valid <= next_cycle_valid;
                 obstacle <= { obstacle_storage[0][output_lane][2:0], output_lane, depth };
-                first_row <= output_block == 0 || (output_block == 1 && obstacle_storage[0][output_lane][2]);
+                first_row <= output_block == 3 || (output_block == 4 && obstacle_storage[0][output_lane][2]);
 
                 if (output_lane < 2) begin
                     output_lane <= output_lane + 1;

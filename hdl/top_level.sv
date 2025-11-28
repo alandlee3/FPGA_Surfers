@@ -47,8 +47,8 @@ module top_level(
     logic          sys_rst_controller;
     logic          sys_rst_render;
 
-    assign sys_rst_render = btn[0];
-    assign sys_rst_pixel = btn[0];
+    assign sys_rst_render = sw[0];
+    assign sys_rst_pixel = sw[0];
 
     logic          clk_pixel;
     logic          clk_5x;
@@ -74,7 +74,7 @@ module top_level(
     logic lab06_clk_locked;
 
     lab06_clk_wiz lcw(
-        .reset(btn[0]),
+        .reset(sw[0]),
         .clk_in1(clk_100mhz),
         .clk_camera(i_ref_clk),
         .clk_xc(clk_xc),
@@ -122,6 +122,9 @@ module top_level(
         .obstacle(obstacle),
         .obstacle_valid(obstacle_valid),
         .done_in(obstacles_done),
+
+        .player_height(player_height),
+        .player_lane(player_lane),
 
         .triangle(render_triangle),
         .triangle_valid(render_triangle_valid),
@@ -220,7 +223,7 @@ module top_level(
     always_ff @( posedge clk_render ) begin
         new_frame <= 0;
 
-        if(btn[0]) begin
+        if(sw[0]) begin
             state <= RST;
         end else if (state == RST) begin
             render_active <= 0;
@@ -232,7 +235,7 @@ module top_level(
             wait_counter <= 0;
         end else if(state == WAIT) begin
             wait_counter <= wait_counter + 1;
-            
+
             if(wait_counter == 100) begin
                 state <= GENERATION;
             end
@@ -346,14 +349,14 @@ module top_level(
         .dina(render_pixel),
         .ena(1'b1),
         .regcea(1'b1),
-        .rsta(btn[0]),
+        .rsta(sw[0]),
         .douta(), //never read from this side
         .addrb(addrb),//transformed lookup pixel
         .dinb(16'b0),
         .clkb(clk_pixel),
         .web(1'b0),
         .enb(1'b1),
-        .rstb(btn[0]),
+        .rstb(sw[0]),
         .regceb(1'b1),
         .doutb(frame_buff_raw)
     );
@@ -467,7 +470,7 @@ module top_level(
     logic [31:0] sampling_counter;
     evt_counter #(.MAX_COUNT(83333333), .WIDTH(32)) sampler_inst (
         .clk(clk_render),
-        .rst(btn[3]),
+        .rst(sw[0]),
         .evt(1),
         .count(sampling_counter)
     );
@@ -496,7 +499,7 @@ module top_level(
     seven_segment_controller mssc(
      .clk(clk_render),
      .rst(sys_rst_render),
-     .val({sampled_obstacle, sampled_frame_rate}),
+     .val({player_score, sampled_frame_rate}),
      .cat(ss_c),
      .an({ss0_an, ss1_an})
      );
@@ -510,6 +513,8 @@ module top_level(
     // assign led[15:12] = sampled_state;
     // assign led[7] = 0;
     assign led[7:0] = renderer_inst.num_triangles[7:0];
+
+    assign led[15] = game_over;
     // assign led[4] = render_pixel[15];
     // assign led[3] = render_h_count[8];
     // assign led[2] = render_valid;

@@ -4,8 +4,8 @@ module game_logic #(
         parameter HALF_BLOCK_LENGTH = 64, // length in "score points" of half block
         parameter GRAVITY = 3, // how much vertical velocity decreases per frame
         parameter DUCK_LIMIT = 15, // how long a duck lasts for
-        parameter VERTICAL_JUMP = 10, // how much vertical velocity a jump gives
-        parameter SPEED = 4, // how many "score points" we move up per frame, MUST divide HALF_BLOCK_LENGTH/2
+        parameter VERTICAL_JUMP = 40, // how much vertical velocity a jump gives
+        parameter SPEED = 1, // how many "score points" we move up per frame, MUST divide HALF_BLOCK_LENGTH/2
         parameter GROUND = -128, // where the floor of the game is (no train car)
         parameter MARGIN_OF_ERROR = 10 // how below the ground level of a train car we can be without dying
     )(
@@ -102,15 +102,15 @@ module game_logic #(
                     end
                     101: begin
                         // firstrow is only high if we are intersecting halfblock.
-                        // 0-63 implies we are in the 2nd halfblock of a ramp
-                        if (obstacle[10:0] <= 63) begin
+                        // 64-128 implies we are in the 2nd halfblock of a ramp
+                        if (obstacle[10:0] <= 255) begin
                             ground_level <= GROUND + $signed(HALF_BLOCK_LENGTH/2 + (half_block_progress >> 1));
                             if (player_height <= GROUND - MARGIN_OF_ERROR + $signed(HALF_BLOCK_LENGTH/2 + (half_block_progress >> 1))) begin
                                 game_over <= 1;
                             end
                         end
                         // 64-127 implies we are in the 1st halfblock of a ramp
-                        else if (obstacle[10:0] <= 127 && obstacle[10:0] >= 64) begin
+                        else if (obstacle[10:0] <= 319 && obstacle[10:0] >= 256) begin
                             ground_level <= GROUND + $signed(half_block_progress >> 1);
                             if (player_height <= GROUND - MARGIN_OF_ERROR + $signed(half_block_progress >> 1)) begin
                                 game_over <= 1;
