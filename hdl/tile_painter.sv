@@ -122,6 +122,40 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
 
     assign tile_bram_read_addr = y_offset_reading * 20 + x_offset_reading;
 
+    logic signed [15:0] max_x, min_x, max_y, min_y;
+    logic signed [15:0] p1x, p1y, p2x, p2y, p3x, p3y;
+    assign p1x = $signed(bram_triangle_read_data[111:96]);
+    assign p1y = $signed(bram_triangle_read_data[95:80]);
+    assign p2x = $signed(bram_triangle_read_data[79:64]);
+    assign p2y = $signed(bram_triangle_read_data[63:48]);
+    assign p3x = $signed(bram_triangle_read_data[47:32]);
+    assign p3y = $signed(bram_triangle_read_data[31:16]);
+    logic no_intersection;
+
+    always_comb begin
+        // logic to determine the lower and upper bounds 
+        // of triangle bounding box intersection with tile
+
+        // get maxima and minima
+        max_x = (p1x >= p2x && p1x >= p3x) ? p1x : (p2x >= p3x) ? p2x : p3x;
+        max_y = (p1y >= p2y && p1y >= p3y) ? p1y : (p2y >= p3y) ? p2y : p3y;
+        min_x = (p1x <= p2x && p1x <= p3x) ? p1x : (p2x <= p3x) ? p2x : p3x;
+        min_y = (p1y <= p2y && p1y <= p3y) ? p1y : (p2y <= p3y) ? p2y : p3y;
+
+        // calculate for specific tile which bounds to use
+        x_offset_lower_bound = ($signed(min_x) <= x_offset) ? 0 : $signed(min_x) - x_offset;
+        y_offset_lower_bound = ($signed(min_y) <= y_offset) ? 0 : $signed(min_y) - y_offset;
+        x_offset_upper_bound = ($signed(max_x) >= x_offset + 20) ? 20 : x_offset + 20 - $signed(max_x);
+        y_offset_upper_bound = ($signed(max_y) >= y_offset + 45) ? 45 : y_offset + 45 - $signed(max_y);
+
+        // compute if there's no intersection at all, too
+        no_intersection =   ($signed(min_x) >= x_offset + 20) || 
+                            ($signed(max_x) <= x_offset) || 
+                            ($signed(min_y) >= y_offset + 45) || 
+                            ($signed(max_y) <= y_offset);
+
+    end
+
     always_ff @( posedge clk ) begin
         
         done <= 0;
@@ -150,22 +184,28 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
         end else if(tile_state == READING_NEW_TRIANGLE_2) begin
             tile_state <= DONE_READING_TRIANGLE;
         end else if(tile_state == DONE_READING_TRIANGLE) begin
-            // we have a new triangle! initialize the ITERATING state.
-            x_offset_reading <= 0;
-            y_offset_reading <= 0;
-            reading_coords_valid <= 1;
-            triangle_data <= bram_triangle_read_data;
-            tile_state <= ITERATING;
+            // bypass any painting if there is no intersection with
+            // triangle bounding box and tile
+            if (no_intersection) begin
+                // no need to wipe since we never even drew
+                tile_state <= WIPE_DONE;
+            end else begin
+                // we have a new triangle! initialize the ITERATING state.
+                x_offset_reading <= x_offset_lower_bound;
+                y_offset_reading <= y_offset_lower_bound;
+                reading_coords_valid <= 1;
+                triangle_data <= bram_triangle_read_data;
+                tile_state <= ITERATING;
+            end
         end else if (tile_state == ITERATING) begin
-
-            // must cycle x_offset_reading from 0 to 19
-            if (x_offset_reading < 19) begin
+            // must cycle x_offset_reading from 0 to end of intersection - 1
+            if (x_offset_reading < x_offset_upper_bound - 1) begin
                 x_offset_reading <= x_offset_reading + 1;
             end else begin
-                x_offset_reading <= 0;
+                x_offset_reading <= x_offset_lower_bound;
 
-                // must cycle y_offset_reading from 0 to 44
-                if (y_offset_reading < 44) begin
+                // must cycle y_offset_reading from 0 to end of intersection - 1
+                if (y_offset_reading < y_offset_lower_bound - 1) begin
                     y_offset_reading <= y_offset_reading + 1;
                 end else begin
                     // done with current triangle!
