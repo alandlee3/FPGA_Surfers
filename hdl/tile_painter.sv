@@ -1,251 +1,295 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
+
 // TODO: optimize lel
 
+
 module tile_painter #(parameter MAX_TRIANGLES=256) (
-        input wire clk,
-        input wire rst,
+       input wire clk,
+       input wire rst,
 
-        // when active is high, this module will start going through all the triangles in the triangle bram
-        // and modify all the pixels in the tile bram.
-        input wire active,
-        
-        // when wipe is high, the module will begin wiping if it is in the DONE or RST state.
-        input wire wipe,
 
-        input wire [$clog2(MAX_TRIANGLES)-1:0] num_triangles,
-        input wire [8:0] x_offset, // x coord of the top left pixel of the current tile
-        input wire [7:0] y_offset, // y coord **
+       // when active is high, this module will start going through all the triangles in the triangle bram
+       // and modify all the pixels in the tile bram.
+       input wire active,
+      
+       // when wipe is high, the module will begin wiping if it is in the DONE or RST state.
+       input wire wipe,
 
-        input wire [127:0] bram_triangle_read_data, // recall this is 2 cycles delayed from bram_triangle_read_addr
-        input wire [31:0] tile_bram_read_data, // 2 cycles delayed from tile_bram_read_addr
 
-        output logic [$clog2(MAX_TRIANGLES)-1:0] bram_triangle_read_addr,
-        output logic [9:0] tile_bram_read_addr,
+       input wire [$clog2(MAX_TRIANGLES)-1:0] num_triangles,
+       input wire [8:0] x_offset, // x coord of the top left pixel of the current tile
+       input wire [7:0] y_offset, // y coord **
 
-        output logic [9:0] tile_bram_write_addr,
-        output logic tile_bram_write_valid,
-        output logic [31:0] tile_bram_write_data,
-        
-        // done will be held high after the operation is completed
-        output logic done
-    );
-    localparam TRIANGLE_BRAM_ADDR_WIDTH = $clog2(MAX_TRIANGLES);
 
-    logic [8:0] x_offset_reading;
-    logic [7:0] y_offset_reading;
-    logic [8:0] x_coord_reading; // x_coord = x_offset_reading + x_offset
-    logic [7:0] y_coord_reading;
-    
-    logic [8:0] x_coord_calculating;
-    logic [7:0] y_coord_calculating;
-    logic [8:0] x_offset_writing;
-    logic [7:0] y_offset_writing;
+       input wire [127:0] bram_triangle_read_data, // recall this is 2 cycles delayed from bram_triangle_read_addr
+       input wire [31:0] tile_bram_read_data, // 2 cycles delayed from tile_bram_read_addr
 
-    logic reading_coords_valid;
-    logic calculating_coords_valid;
-    logic writing_coords_valid;
 
-    logic [31:0] writing_pixel_data;
+       output logic [$clog2(MAX_TRIANGLES)-1:0] bram_triangle_read_addr,
+       output logic [9:0] tile_bram_read_addr,
 
-    pipeline #(.WIDTH(9), .STAGES_NEEDED(3)) x_offset_pl_inst (
-        .clk(clk),
-        .in(x_offset_reading),
-        .out(x_offset_writing)
-    );
 
-    pipeline #(.WIDTH(8), .STAGES_NEEDED(3)) y_offset_pl_inst (
-        .clk(clk),
-        .in(y_offset_reading),
-        .out(y_offset_writing)
-    );
+       output logic [9:0] tile_bram_write_addr,
+       output logic tile_bram_write_valid,
+       output logic [31:0] tile_bram_write_data,
+      
+       // done will be held high after the operation is completed
+       output logic done
+   );
+   localparam TRIANGLE_BRAM_ADDR_WIDTH = $clog2(MAX_TRIANGLES);
 
-    assign x_coord_reading = x_offset + x_offset_reading;
-    assign y_coord_reading = y_offset + y_offset_reading;
 
-    pipeline #(.WIDTH(9), .STAGES_NEEDED(2)) x_coord_pl_inst (
-        .clk(clk),
-        .in(x_coord_reading),
-        .out(x_coord_calculating)
-    );
+   logic [8:0] x_offset_reading;
+   logic [7:0] y_offset_reading;
+   logic [8:0] x_coord_reading; // x_coord = x_offset_reading + x_offset
+   logic [7:0] y_coord_reading;
+  
+   logic [8:0] x_coord_calculating;
+   logic [7:0] y_coord_calculating;
+   logic [8:0] x_offset_writing;
+   logic [7:0] y_offset_writing;
 
-    pipeline #(.WIDTH(8), .STAGES_NEEDED(2)) y_coord_pl_inst (
-        .clk(clk),
-        .in(y_coord_reading),
-        .out(y_coord_calculating)
-    );
 
-    pipeline #(.WIDTH(1), .STAGES_NEEDED(2)) tile_reading_to_calc_valid_pl_inst (
-        .clk(clk),
-        .in(reading_coords_valid),
-        .out(calculating_coords_valid)
-    );
+   logic reading_coords_valid;
+   logic calculating_coords_valid;
+   logic writing_coords_valid;
 
-    logic [127:0] triangle_data;
-    logic [TRIANGLE_BRAM_ADDR_WIDTH-1:0] triangle_index;
 
-    logic [8:0] x_wipe;
-    logic [7:0] y_wipe;
+   logic [31:0] writing_pixel_data;
 
-    assign bram_triangle_read_addr = triangle_index;
 
-    typedef enum {
-        RST,
-        READING_NEW_TRIANGLE_1, // reading a new triangle from BRAMs, first cycle
-        READING_NEW_TRIANGLE_2, // reading a new triangle from BRAMs, second cycle
-        DONE_READING_TRIANGLE, // done reading new triangle, find triangle data and go to iteration.
-      	ITERATING, // x_offset_reading, y_offset_reading are cycling.
-        DONE, // done painting !!
-        WIPE, // currently wiping !!
-        WIPEDONE // done wiping, nothing will get you out of this state except holding active low.
-    } tile_state_type;
-    tile_state_type tile_state;
+   pipeline #(.WIDTH(9), .STAGES_NEEDED(3)) x_offset_pl_inst (
+       .clk(clk),
+       .in(x_offset_reading),
+       .out(x_offset_writing)
+   );
 
-    pixel_calculator pixel_calculator_inst(
-        .clk(clk),
-        .rst(rst),
-        .xcoord_in(x_coord_calculating),
-        .ycoord_in(y_coord_calculating),
-        .pixel_data_in(tile_bram_read_data),
-        .triangle(triangle_data),
-        .pixel_in_valid(calculating_coords_valid),
-        .xcoord_out(),
-        .ycoord_out(),
-        .pixel_out_valid(writing_coords_valid),
-        .pixel_data_out(writing_pixel_data)
-    );
 
-    assign tile_bram_write_addr = (tile_state == WIPE) ? (y_wipe * 20 + x_wipe) : (y_offset_writing * 20 + x_offset_writing);
-    assign tile_bram_write_data = (tile_state == WIPE) ? 32'hFFFFFFFF : writing_pixel_data;
-    assign tile_bram_write_valid = (tile_state == WIPE) ? 1 : writing_coords_valid;
+   pipeline #(.WIDTH(8), .STAGES_NEEDED(3)) y_offset_pl_inst (
+       .clk(clk),
+       .in(y_offset_reading),
+       .out(y_offset_writing)
+   );
 
-    assign tile_bram_read_addr = y_offset_reading * 20 + x_offset_reading;
 
-    logic signed [15:0] max_x, min_x, max_y, min_y;
-    logic signed [15:0] p1x, p1y, p2x, p2y, p3x, p3y;
-    assign p1x = $signed(bram_triangle_read_data[111:96]);
-    assign p1y = $signed(bram_triangle_read_data[95:80]);
-    assign p2x = $signed(bram_triangle_read_data[79:64]);
-    assign p2y = $signed(bram_triangle_read_data[63:48]);
-    assign p3x = $signed(bram_triangle_read_data[47:32]);
-    assign p3y = $signed(bram_triangle_read_data[31:16]);
-    logic no_intersection;
+   assign x_coord_reading = x_offset + x_offset_reading;
+   assign y_coord_reading = y_offset + y_offset_reading;
 
-    always_comb begin
-        // logic to determine the lower and upper bounds 
-        // of triangle bounding box intersection with tile
 
-        // get maxima and minima
-        max_x = (p1x >= p2x && p1x >= p3x) ? p1x : (p2x >= p3x) ? p2x : p3x;
-        max_y = (p1y >= p2y && p1y >= p3y) ? p1y : (p2y >= p3y) ? p2y : p3y;
-        min_x = (p1x <= p2x && p1x <= p3x) ? p1x : (p2x <= p3x) ? p2x : p3x;
-        min_y = (p1y <= p2y && p1y <= p3y) ? p1y : (p2y <= p3y) ? p2y : p3y;
+   pipeline #(.WIDTH(9), .STAGES_NEEDED(2)) x_coord_pl_inst (
+       .clk(clk),
+       .in(x_coord_reading),
+       .out(x_coord_calculating)
+   );
 
-        // calculate for specific tile which bounds to use
-        x_offset_lower_bound = ($signed(min_x) <= x_offset) ? 0 : $signed(min_x) - x_offset;
-        y_offset_lower_bound = ($signed(min_y) <= y_offset) ? 0 : $signed(min_y) - y_offset;
-        x_offset_upper_bound = ($signed(max_x) >= x_offset + 20) ? 20 : x_offset + 20 - $signed(max_x);
-        y_offset_upper_bound = ($signed(max_y) >= y_offset + 45) ? 45 : y_offset + 45 - $signed(max_y);
 
-        // compute if there's no intersection at all, too
-        no_intersection =   ($signed(min_x) >= x_offset + 20) || 
-                            ($signed(max_x) <= x_offset) || 
-                            ($signed(min_y) >= y_offset + 45) || 
-                            ($signed(max_y) <= y_offset);
+   pipeline #(.WIDTH(8), .STAGES_NEEDED(2)) y_coord_pl_inst (
+       .clk(clk),
+       .in(y_coord_reading),
+       .out(y_coord_calculating)
+   );
 
-    end
 
-    always_ff @( posedge clk ) begin
-        
-        done <= 0;
+   pipeline #(.WIDTH(1), .STAGES_NEEDED(2)) tile_reading_to_calc_valid_pl_inst (
+       .clk(clk),
+       .in(reading_coords_valid),
+       .out(calculating_coords_valid)
+   );
 
-        if ( !active || rst) begin
-            tile_state <= RST;
 
-            reading_coords_valid <= 0;
-        end else if (tile_state == RST) begin
-            reading_coords_valid <= 0;
-            
-            if (wipe) begin // wipe takes priority!
-                tile_state <= WIPE;
-                x_wipe <= 0;
-                y_wipe <= 0;
-            end else if (active) begin
-                if(num_triangles == 0) begin
-                    tile_state <= DONE;
-                end else begin
-                    triangle_index <= 0;
-                    tile_state <= READING_NEW_TRIANGLE_1;
-                end
-            end
-        end else if (tile_state == READING_NEW_TRIANGLE_1) begin
-            tile_state <= READING_NEW_TRIANGLE_2;
-        end else if(tile_state == READING_NEW_TRIANGLE_2) begin
-            tile_state <= DONE_READING_TRIANGLE;
-        end else if(tile_state == DONE_READING_TRIANGLE) begin
-            // bypass any painting if there is no intersection with
-            // triangle bounding box and tile
-            if (no_intersection) begin
-                // no need to wipe since we never even drew
-                tile_state <= WIPE_DONE;
-            end else begin
-                // we have a new triangle! initialize the ITERATING state.
-                x_offset_reading <= x_offset_lower_bound;
-                y_offset_reading <= y_offset_lower_bound;
-                reading_coords_valid <= 1;
-                triangle_data <= bram_triangle_read_data;
-                tile_state <= ITERATING;
-            end
-        end else if (tile_state == ITERATING) begin
-            // must cycle x_offset_reading from 0 to end of intersection - 1
-            if (x_offset_reading < x_offset_upper_bound - 1) begin
-                x_offset_reading <= x_offset_reading + 1;
-            end else begin
-                x_offset_reading <= x_offset_lower_bound;
+   logic [127:0] triangle_data;
+   logic [TRIANGLE_BRAM_ADDR_WIDTH-1:0] triangle_index;
 
-                // must cycle y_offset_reading from 0 to end of intersection - 1
-                if (y_offset_reading < y_offset_lower_bound - 1) begin
-                    y_offset_reading <= y_offset_reading + 1;
-                end else begin
-                    // done with current triangle!
-                    reading_coords_valid <= 0;
 
-                    if (triangle_index + 1 < num_triangles) begin
-                        triangle_index <= triangle_index + 1;
-                        tile_state <= READING_NEW_TRIANGLE_1;
-                    end else begin
-                        // we are fully done with all triangles.
-                        tile_state <= DONE;
-                    end
-                end
-            end
-        end else if(tile_state == DONE) begin
-            done <= 1;
+   logic [8:0] x_wipe;
+   logic [7:0] y_wipe;
 
-            if (wipe) begin
-                tile_state <= WIPE;
-                x_wipe <= 0;
-                y_wipe <= 0;
-            end
-        end else if(tile_state == WIPE) begin
-            if (x_wipe < 19) begin
-                x_wipe <= x_wipe + 1;
-            end else begin
-                x_wipe <= 0;
 
-                // must cycle y_offset_reading from 0 to 44
-                if (y_wipe < 44) begin
-                    y_wipe <= y_wipe + 1;
-                end else begin
-                    tile_state <= WIPEDONE;
-                end
-            end
-        end else if (tile_state == WIPEDONE) begin
-            done <= 1;
-        end
-    end
+   assign bram_triangle_read_addr = triangle_index;
+
+
+   typedef enum {
+       RST,
+       READING_NEW_TRIANGLE_1, // reading a new triangle from BRAMs, first cycle
+       READING_NEW_TRIANGLE_2, // reading a new triangle from BRAMs, second cycle
+       DONE_READING_TRIANGLE, // done reading new triangle, find triangle data and go to iteration.
+       CALCULATING_BOUNDS, // extra clock cycle to calculate bounding box stuff
+       ITERATING, // x_offset_reading, y_offset_reading are cycling.
+       DONE, // done painting !!
+       WIPE, // currently wiping !!
+       WIPEDONE // done wiping, nothing will get you out of this state except holding active low.
+   } tile_state_type;
+   tile_state_type tile_state;
+
+
+   pixel_calculator pixel_calculator_inst(
+       .clk(clk),
+       .rst(rst),
+       .xcoord_in(x_coord_calculating),
+       .ycoord_in(y_coord_calculating),
+       .pixel_data_in(tile_bram_read_data),
+       .triangle(triangle_data),
+       .pixel_in_valid(calculating_coords_valid),
+       .xcoord_out(),
+       .ycoord_out(),
+       .pixel_out_valid(writing_coords_valid),
+       .pixel_data_out(writing_pixel_data)
+   );
+
+
+   assign tile_bram_write_addr = (tile_state == WIPE) ? (y_wipe * 20 + x_wipe) : (y_offset_writing * 20 + x_offset_writing);
+   assign tile_bram_write_data = (tile_state == WIPE) ? 32'hFFFFFFFF : writing_pixel_data;
+   assign tile_bram_write_valid = (tile_state == WIPE) ? 1 : writing_coords_valid;
+
+
+   assign tile_bram_read_addr = y_offset_reading * 20 + x_offset_reading;
+
+
+   logic [6:0] x_offset_lower_bound, y_offset_lower_bound, x_offset_upper_bound, y_offset_upper_bound;
+   logic signed [15:0] max_x, min_x, max_y, min_y;
+   logic signed [15:0] p1x, p1y, p2x, p2y, p3x, p3y;
+   assign p1x = $signed(bram_triangle_read_data[111:96]);
+   assign p1y = $signed(bram_triangle_read_data[95:80]);
+   assign p2x = $signed(bram_triangle_read_data[79:64]);
+   assign p2y = $signed(bram_triangle_read_data[63:48]);
+   assign p3x = $signed(bram_triangle_read_data[47:32]);
+   assign p3y = $signed(bram_triangle_read_data[31:16]);
+   logic no_intersection;
+
+
+   // bounding box of triangle calculations
+   assign max_x = (p1x >= p2x && p1x >= p3x) ? p1x : (p2x >= p3x) ? p2x : p3x;
+   assign max_y = (p1y >= p2y && p1y >= p3y) ? p1y : (p2y >= p3y) ? p2y : p3y;
+   assign min_x = (p1x <= p2x && p1x <= p3x) ? p1x : (p2x <= p3x) ? p2x : p3x;
+   assign min_y = (p1y <= p2y && p1y <= p3y) ? p1y : (p2y <= p3y) ? p2y : p3y;
+
+
+   always_ff @( posedge clk ) begin
+      
+       done <= 0;
+
+
+       if ( !active || rst) begin
+           tile_state <= RST;
+
+
+           reading_coords_valid <= 0;
+       end else if (tile_state == RST) begin
+           reading_coords_valid <= 0;
+          
+           if (wipe) begin // wipe takes priority!
+               tile_state <= WIPE;
+               x_wipe <= 0;
+               y_wipe <= 0;
+           end else if (active) begin
+               if(num_triangles == 0) begin
+                   tile_state <= DONE;
+               end else begin
+                   triangle_index <= 0;
+                   tile_state <= READING_NEW_TRIANGLE_1;
+               end
+           end
+       end else if (tile_state == READING_NEW_TRIANGLE_1) begin
+           tile_state <= READING_NEW_TRIANGLE_2;
+       end else if(tile_state == READING_NEW_TRIANGLE_2) begin
+           tile_state <= DONE_READING_TRIANGLE;
+       end else if(tile_state == DONE_READING_TRIANGLE) begin
+           // we have a new triangle! initialize the ITERATING state.
+           triangle_data <= bram_triangle_read_data;
+
+
+           // calculate for specific tile which bounds to use
+           x_offset_lower_bound <= ($signed(min_x) <= x_offset) ? 0 : ($signed(min_x) >= x_offset + 20) ? 20 : $signed(min_x) - x_offset;
+           y_offset_lower_bound <= ($signed(min_y) <= y_offset) ? 0 : ($signed(min_y) >= y_offset + 45) ? 45 : $signed(min_y) - y_offset;
+           x_offset_upper_bound <= ($signed(max_x) >= x_offset + 20) ? 20 : ($signed(max_x) <= x_offset) ? 0 : $signed(max_x) - x_offset;
+           y_offset_upper_bound <= ($signed(max_y) >= y_offset + 45) ? 45 : ($signed(max_y) <= y_offset) ? 0 : $signed(max_y) - y_offset;
+
+
+           // compute if there's no intersection at all, too
+           no_intersection <=  ($signed(min_x) >= x_offset + 20) ||
+                               ($signed(max_x) <= x_offset) ||
+                               ($signed(min_y) >= y_offset + 45) ||
+                               ($signed(max_y) <= y_offset);
+
+
+           tile_state <= CALCULATING_BOUNDS;
+       end else if (tile_state == CALCULATING_BOUNDS) begin
+           if (no_intersection) begin
+               // done with current triangle!
+               reading_coords_valid <= 0;
+
+
+               if (triangle_index + 1 < num_triangles) begin
+                   triangle_index <= triangle_index + 1;
+                   tile_state <= READING_NEW_TRIANGLE_1;
+               end else begin
+                   // we are fully done with all triangles.
+                   tile_state <= DONE;
+               end
+           end else begin
+               tile_state <= ITERATING;
+               x_offset_reading <= x_offset_lower_bound;
+               y_offset_reading <= y_offset_lower_bound;
+               reading_coords_valid <= 1;
+           end
+       end else if (tile_state == ITERATING) begin
+           // must cycle x_offset_reading from 0 to end of intersection - 1
+           if (x_offset_reading < x_offset_upper_bound - 1) begin
+               x_offset_reading <= x_offset_reading + 1;
+           end else begin
+               x_offset_reading <= x_offset_lower_bound;
+
+
+               // must cycle y_offset_reading from 0 to end of intersection - 1
+               if (y_offset_reading < y_offset_upper_bound - 1) begin
+                   y_offset_reading <= y_offset_reading + 1;
+               end else begin
+                   // done with current triangle!
+                   reading_coords_valid <= 0;
+
+
+                   if (triangle_index + 1 < num_triangles) begin
+                       triangle_index <= triangle_index + 1;
+                       tile_state <= READING_NEW_TRIANGLE_1;
+                   end else begin
+                       // we are fully done with all triangles.
+                       tile_state <= DONE;
+                   end
+               end
+           end
+       end else if(tile_state == DONE) begin
+           done <= 1;
+
+
+           if (wipe) begin
+               tile_state <= WIPE;
+               x_wipe <= 0;
+               y_wipe <= 0;
+           end
+       end else if(tile_state == WIPE) begin
+           if (x_wipe < 19) begin
+               x_wipe <= x_wipe + 1;
+           end else begin
+               x_wipe <= 0;
+
+
+               // must cycle y_offset_reading from 0 to 44
+               if (y_wipe < 44) begin
+                   y_wipe <= y_wipe + 1;
+               end else begin
+                   tile_state <= WIPEDONE;
+               end
+           end
+       end else if (tile_state == WIPEDONE) begin
+           done <= 1;
+       end
+   end
+
 
 endmodule
 
+
 `default_nettype wire
+
