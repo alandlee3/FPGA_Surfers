@@ -22,7 +22,10 @@ module game_logic #(
         output logic game_over,
         output logic [1:0] player_lane,
         output logic signed [15:0] player_height,
-        output logic [15:0] player_score
+        output logic [15:0] player_score,
+        output logic obstacle_in_half_block,
+        output logic signed [15:0] ground_level,
+        output logic [5:0] half_block_progress
     );
 
     // high level:
@@ -39,9 +42,9 @@ module game_logic #(
     logic [$clog2(DUCK_LIMIT)-1:0] ducking_duration;
     logic signed [10:0] vertical_velocity_eighths;
     logic signed [10:0] new_vertical_velocity_eighths;
-    logic [$clog2(HALF_BLOCK_LENGTH)-1:0] half_block_progress;
+    // logic [$clog2(HALF_BLOCK_LENGTH)-1:0] half_block_progress;
 
-    logic signed [15:0] ground_level; // for where we fall to after jumping, determined by obstacle
+    // logic signed [15:0] ground_level; // for where we fall to after jumping, determined by obstacle
 
     assign airborne = (player_height > ground_level + VERTICAL_JUMP);
 
@@ -65,10 +68,10 @@ module game_logic #(
             half_block_progress <= 0;
         end else begin
             // OBSTACLE PROCESSING
-            if (obstacle_valid && firstrow && obstacle[12:11] == player_lane && !game_over) begin
+            if (obstacle_valid && firstrow && (obstacle[12:11] == player_lane) && !game_over) begin
+                obstacle_in_half_block <= 1;
                 case(obstacle[15:13])
-                    000: ground_level <= $signed(GROUND); // empty block
-                    001: begin // Barrier, Solid Low (must jump)
+                    3'b001: begin // Barrier, Solid Low (must jump)
                         ground_level <= $signed(GROUND);
                         if (half_block_progress == HALF_BLOCK_LENGTH/2) begin
                             // check for non-jumping behavior
@@ -77,14 +80,14 @@ module game_logic #(
                             end
                         end
                     end
-                    010: begin // Barrier, Solid High (must duck)
+                    3'b010: begin // Barrier, Solid High (must duck unless very high)
                         ground_level <= $signed(GROUND);
                         if (half_block_progress == HALF_BLOCK_LENGTH/2) begin
                             // check for non-ducking behavior
-                            game_over <= !ducking;
+                            game_over <= (!ducking && (player_height <= $signed(GROUND + HALF_BLOCK_LENGTH)));
                         end
                     end
-                    011: begin // Barrier, Middle (can either duck or jump)
+                    3'b011: begin // Barrier, Middle (can either duck or jump)
                         ground_level <= $signed(GROUND);
                         if (half_block_progress == HALF_BLOCK_LENGTH/2) begin
                             // check for non-jumping and non-ducking behavior
@@ -93,31 +96,33 @@ module game_logic #(
                             end
                         end
                     end
-                    100: begin // Train Car
+                    3'b100: begin // Train Car
                         ground_level <= $signed(GROUND+HALF_BLOCK_LENGTH);
                         // check for colliding with train car
-                        if (player_height <= $signed(GROUND+HALF_BLOCK_LENGTH)) begin
+                        if (player_height <= $signed(GROUND+HALF_BLOCK_LENGTH) - MARGIN_OF_ERROR) begin
                             game_over <= 1;
                         end
                     end
-                    101: begin
+                    3'b101: begin
+                        // TODO if time, figure out why 0xFF9F --> 0xFF95 height halfway thru car
+
                         // firstrow is only high if we are intersecting halfblock.
                         // 64-128 implies we are in the 2nd halfblock of a ramp
                         if (obstacle[10:0] <= 255) begin
-                            ground_level <= GROUND + $signed(HALF_BLOCK_LENGTH/2 + (half_block_progress >> 1));
+                            ground_level <= $signed(GROUND + HALF_BLOCK_LENGTH/2 + (half_block_progress >> 1));
                             if (player_height <= GROUND - MARGIN_OF_ERROR + $signed(HALF_BLOCK_LENGTH/2 + (half_block_progress >> 1))) begin
                                 game_over <= 1;
                             end
                         end
                         // 64-127 implies we are in the 1st halfblock of a ramp
                         else if (obstacle[10:0] <= 319 && obstacle[10:0] >= 256) begin
-                            ground_level <= GROUND + $signed(half_block_progress >> 1);
+                            ground_level <= $signed(GROUND + (half_block_progress >> 1));
                             if (player_height <= GROUND - MARGIN_OF_ERROR + $signed(half_block_progress >> 1)) begin
                                 game_over <= 1;
                             end
                         end
                     end
-                    110: ; // Moving Car <- currently we do not generate moving cars. TODO later
+                    3'b110: ; // Moving Car <- currently we do not generate moving cars. TODO later
                     default: ;
                 endcase
             end
@@ -178,7 +183,7 @@ module game_logic #(
                     // 1. doing nothing
                     // 3. trying to jump again --> transition to running state and then re-jump
                     else if (player_height + (new_vertical_velocity_eighths >>> 3) < ground_level) begin // hitting ground level
-                        if (player_height + (new_vertical_velocity_eighths >>> 3) >= ground_level - MARGIN_OF_ERROR) begin
+                        if ($signed(player_height) + $signed(new_vertical_velocity_eighths >>> 3) >= $signed(ground_level) - MARGIN_OF_ERROR) begin
                             player_height <= ground_level;
                             vertical_velocity_eighths <= 0;
                         end else begin
@@ -212,7 +217,8 @@ module game_logic #(
                     end
                 end
 
-                ground_level <= $signed(GROUND); // set as default for next frame, unless an obstacle is detected
+                if (!obstacle_in_half_block) ground_level <= $signed(GROUND); // set as default for next frame, unless an obstacle is detected
+                obstacle_in_half_block <= 0;
             end
         end
     end

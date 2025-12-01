@@ -143,7 +143,7 @@ module top_level(
         genvar d;
         for (d = 0; d < 4; d=d+1) begin
             debouncer #(.CLK_PERIOD_NS(12),
-                        .DEBOUNCE_TIME_MS(5)) game_debouncers
+                        .DEBOUNCE_TIME_MS(50)) game_debouncers
                 (.clk(clk_render),
                 .rst(state == RST),
                 .dirty(btn[d]),
@@ -151,14 +151,18 @@ module top_level(
         end
     endgenerate
 
+    logic obstacle_in_half_block;
+    logic signed [15:0] ground_level;
+    logic [5:0] half_block_progress;
+
     game_logic #(
         .HALF_BLOCK_LENGTH(64), // length in "score points" of half block
-        .GRAVITY(3), // how much vertical velocity decreases per frame
+        .GRAVITY(1), // how much vertical velocity decreases per frame
         .DUCK_LIMIT(15), // how long a duck lasts for
         .VERTICAL_JUMP(10), // how much vertical velocity a jump gives
-        .SPEED(4), // how many "score points" we move up per frame, MUST divide HALF_BLOCK_LENGTH/2
+        .SPEED(1), // how many "score points" we move up per frame, MUST divide HALF_BLOCK_LENGTH/2
         .GROUND(-128), // where the floor of the game is (no train car)
-        .MARGIN_OF_ERROR(10) // how below the ground level of a train car we can be without dying
+        .MARGIN_OF_ERROR(15) // how below the ground level of a train car we can be without dying
     ) game (
         .clk(clk_render),
         .rst(state == RST),
@@ -173,7 +177,10 @@ module top_level(
         .game_over(game_over),
         .player_lane(player_lane),
         .player_height(player_height),
-        .player_score(player_score)
+        .player_score(player_score),
+        .obstacle_in_half_block(obstacle_in_half_block),
+        .ground_level(ground_level),
+        .half_block_progress(half_block_progress)
     );
 
     ///////////////////////////////////////// RENDERING //////////////////////////////////////////////////////////////////
@@ -213,12 +220,14 @@ module top_level(
         WAIT, // must wait like 30 cycles for done signal to clear out
         WAIT2,
         GENERATION,
-        RENDERING
+        RENDERING,
+        DONE // a way for us to slow down frame rate
     } tl_state;
 
     tl_state state;
 
     logic [6:0] wait_counter;
+    logic [31:0] lag_counter;
 
     always_ff @( posedge clk_render ) begin
         new_frame <= 0;
@@ -228,25 +237,32 @@ module top_level(
         end else if (state == RST) begin
             render_active <= 0;
             state <= START;
+            lag_counter <= 0;
         end else if (state == START) begin
             render_active <= 0;
             state <= WAIT;
             new_frame <= 1;
             wait_counter <= 0;
+            lag_counter <= lag_counter + 1;
         end else if(state == WAIT) begin
+            lag_counter <= lag_counter + 1;
             wait_counter <= wait_counter + 1;
 
             if(wait_counter == 100) begin
                 state <= GENERATION;
             end
         end else if(state == GENERATION) begin
+            lag_counter <= lag_counter + 1;
             if(projector_done) begin
                 state <= RENDERING;
                 render_active <= 1;
             end
         end else if(state == RENDERING) begin
-            if (render_done) begin
+            if (render_done && lag_counter >= {sw[15:8],16'b0000000000000000}) begin
                 state <= START;
+                lag_counter <= 0;
+            end else begin
+                lag_counter <= lag_counter + 1;
             end
         end
     end
@@ -496,10 +512,11 @@ module top_level(
 
     logic [6:0] ss_c;
 
+    // sampled_frame_rate can also be displayed here
     seven_segment_controller mssc(
      .clk(clk_render),
      .rst(sys_rst_render),
-     .val({player_score, sampled_frame_rate}),
+     .val({ground_level, player_height}),
      .cat(ss_c),
      .an({ss0_an, ss1_an})
      );
@@ -515,6 +532,8 @@ module top_level(
     assign led[7:0] = renderer_inst.num_triangles[7:0];
 
     assign led[15] = game_over;
+    assign led[14] = obstacle_in_half_block;
+    // assign led[13] = reached;
     // assign led[4] = render_pixel[15];
     // assign led[3] = render_h_count[8];
     // assign led[2] = render_valid;

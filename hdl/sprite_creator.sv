@@ -76,11 +76,11 @@ module sprite_creator (
                 vertex_z <= DEPTH_CLOSE;
             end else if(counter == 2) begin
                 vertex_x <= lane_left;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_CLOSE;
             end else if(counter == 3) begin
                 vertex_x <= lane_left;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_CLOSE;
             end else if(counter == 4) begin
                 vertex_x <= lane_right;
@@ -88,7 +88,7 @@ module sprite_creator (
                 vertex_z <= DEPTH_CLOSE;
             end else if(counter == 5) begin
                 vertex_x <= lane_right;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_CLOSE;
             end else if(counter == 6) begin
                 color <= 16'h0200; // left side
@@ -97,15 +97,15 @@ module sprite_creator (
                 vertex_z <= DEPTH_CLOSE;
             end else if(counter == 7) begin
                 vertex_x <= lane_left;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_CLOSE;
             end else if(counter == 8) begin
                 vertex_x <= lane_left;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_FAR;
             end else if(counter == 9) begin
                 vertex_x <= lane_left;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_FAR;
             end else if(counter == 10) begin
                 vertex_x <= lane_left;
@@ -121,15 +121,15 @@ module sprite_creator (
                 vertex_z <= DEPTH_CLOSE;
             end else if(counter == 13) begin
                 vertex_x <= lane_right;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_CLOSE;
             end else if(counter == 14) begin
                 vertex_x <= lane_right;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_FAR;
             end else if(counter == 15) begin
                 vertex_x <= lane_right;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_FAR;
             end else if(counter == 16) begin
                 vertex_x <= lane_right;
@@ -143,53 +143,53 @@ module sprite_creator (
                 // top
                 color <= 16'h1404;
                 vertex_x <= lane_left;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height;
                 vertex_z <= DEPTH_CLOSE;
             end else if(counter == 19) begin
                 vertex_x <= lane_right;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height;
                 vertex_z <= DEPTH_CLOSE;
             end else if(counter == 20) begin
                 vertex_x <= lane_right;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height;
                 vertex_z <= DEPTH_FAR;
             end else if(counter == 21) begin
                 vertex_x <= lane_right;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height;
                 vertex_z <= DEPTH_FAR;
             end else if(counter == 22) begin
                 vertex_x <= lane_left;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height;
                 vertex_z <= DEPTH_FAR;
             end else if(counter == 23) begin
                 vertex_x <= lane_left;
-                vertex_y <= -player_height + 32;
+                vertex_y <= -player_height;
                 vertex_z <= DEPTH_CLOSE;
             end else if(counter == 24) begin
                 // bottom
                 color <= 16'h2204;
                 vertex_x <= lane_left;
-                vertex_y <= -player_height;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_CLOSE;
             end else if(counter == 25) begin
                 vertex_x <= lane_right;
-                vertex_y <= -player_height;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_CLOSE;
             end else if(counter == 26) begin
                 vertex_x <= lane_right;
-                vertex_y <= -player_height;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_FAR;
             end else if(counter == 27) begin
                 vertex_x <= lane_right;
-                vertex_y <= -player_height;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_FAR;
             end else if(counter == 28) begin
                 vertex_x <= lane_left;
-                vertex_y <= -player_height;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_FAR;
             end else if(counter == 29) begin
                 vertex_x <= lane_left;
-                vertex_y <= -player_height;
+                vertex_y <= -player_height - 32;
                 vertex_z <= DEPTH_CLOSE;
 
                 state <= IDLE;
