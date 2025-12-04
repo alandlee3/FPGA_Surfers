@@ -95,7 +95,7 @@ module top_level(
     assign ddr3_clk_locked = lab06_clk_locked;
 
      ///////////////////////////////////////// OBSTACLE GENERATION //////////////////////////////////////////////////////////////////
-    logic new_frame; // TODO: need to wire up to something to be single-cycle high at start of each frame
+    logic new_frame;
     logic [15:0] obstacle;
     logic obstacle_valid;
     logic firstrow;
@@ -125,6 +125,7 @@ module top_level(
 
         .player_height(player_height),
         .player_lane(player_lane),
+        .ducking(ducking),
 
         .triangle(render_triangle),
         .triangle_valid(render_triangle_valid),
@@ -133,6 +134,8 @@ module top_level(
 
     ///////////////////////////////////////// GAME LOGIC //////////////////////////////////////////////////////////////////
     logic [3:0] clean_controls; // left, duck, jump, right in that order
+    logic [3:0] old_clean_controls; // for detecting rising edges
+    logic [3:0] actual_controls; // actual instance of rising edges
 
     logic game_over;
     logic [1:0] player_lane;
@@ -143,23 +146,33 @@ module top_level(
         genvar d;
         for (d = 0; d < 4; d=d+1) begin
             debouncer #(.CLK_PERIOD_NS(12),
-                        .DEBOUNCE_TIME_MS(50)) game_debouncers
+                        .DEBOUNCE_TIME_MS(5)) game_debouncers
                 (.clk(clk_render),
                 .rst(state == RST),
                 .dirty(btn[d]),
                 .clean(clean_controls[d]));
+            
+            always_ff @(posedge clk_render) begin
+                if (new_frame) begin
+                    old_clean_controls[d] <= clean_controls[d];
+                    actual_controls[d] <= (clean_controls[d] && !old_clean_controls[d]);
+                end
+            end
         end
     endgenerate
 
     logic obstacle_in_half_block;
     logic signed [15:0] ground_level;
     logic [5:0] half_block_progress;
+    logic [1:0] gravity_32nds;
+    logic [2:0] vertical_jump;
+    logic ducking;
 
     game_logic #(
         .HALF_BLOCK_LENGTH(64), // length in "score points" of half block
-        .GRAVITY(1), // how much vertical velocity decreases per frame
-        .DUCK_LIMIT(15), // how long a duck lasts for
-        .VERTICAL_JUMP(10), // how much vertical velocity a jump gives
+        .GRAVITY(1), // how much vertical velocity decreases per frame, in 64ths
+        .DUCK_LIMIT(96), // how long a duck lasts for
+        .VERTICAL_JUMP(138), // how much vertical velocity a jump gives, in 64ths
         .SPEED(1), // how many "score points" we move up per frame, MUST divide HALF_BLOCK_LENGTH/2
         .GROUND(-128), // where the floor of the game is (no train car)
         .MARGIN_OF_ERROR(15) // how below the ground level of a train car we can be without dying
@@ -169,10 +182,10 @@ module top_level(
         .new_frame(new_frame),
         .obstacle(obstacle),
         .obstacle_valid(obstacle_valid),
-        .duck(clean_controls[2]),
-        .jump(clean_controls[1]),
-        .left(clean_controls[3]),
-        .right(clean_controls[0]),
+        .duck(actual_controls[2]),
+        .jump(actual_controls[1]),
+        .left(actual_controls[3]),
+        .right(actual_controls[0]),
         .firstrow(firstrow), // high only if obstacle is in the first row (valid to check collisions)
         .game_over(game_over),
         .player_lane(player_lane),
@@ -180,7 +193,8 @@ module top_level(
         .player_score(player_score),
         .obstacle_in_half_block(obstacle_in_half_block),
         .ground_level(ground_level),
-        .half_block_progress(half_block_progress)
+        .half_block_progress(half_block_progress),
+        .ducking(ducking)
     );
 
     ///////////////////////////////////////// RENDERING //////////////////////////////////////////////////////////////////

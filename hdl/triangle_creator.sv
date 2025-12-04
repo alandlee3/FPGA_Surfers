@@ -131,7 +131,7 @@ module triangle_creator (
                     vertex_z <= obstacle_depth - 32;
                     vertex_x <= lane_left;
                     vertex_y <= MID;
-                    color <= 16'hF000; // red barrier
+                    color <= 16'hFE18; // pink barrier
                 end else if (vertex_counter == 1) begin
                     vertex_z <= obstacle_depth - 32;
                     vertex_x <= lane_right;
@@ -163,7 +163,7 @@ module triangle_creator (
                     vertex_z <= obstacle_depth - 32;
                     vertex_x <= lane_left;
                     vertex_y <= MID-8;
-                    color <= 16'hF000; // red barrier
+                    color <= 16'hFD00; // orange barrier
                 end else if (vertex_counter == 1) begin
                     vertex_z <= obstacle_depth - 32;
                     vertex_x <= lane_right;

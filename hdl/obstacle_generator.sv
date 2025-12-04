@@ -75,6 +75,9 @@ module obstacle_generator #(
 
     logic next_cycle_valid;
 
+    // store registers to force at least a certain number of cars after each ramp
+    logic [2:0] cars_follow_ramp [2:0];
+
     assign next_cycle_valid = ( obstacle_storage[0][output_lane][3] == 0) && obstacle_storage[0][output_lane][2:0] != 0;
 
     always_ff @( posedge clk ) begin
@@ -125,15 +128,22 @@ module obstacle_generator #(
 
             // 7/8 probability empty
             // Otherwise: 1/2 ( 1/2 -> barrier, 1/4 -> duck barrier, 1/4 -> jump barrier )
-            //           1/2 ( 3/4 Train car, 1/4 Ramp )
+            //           1/2 ( 3/4 Train car, 1/4 Ramp 
 
 
             for (int j = 0; j < 3; j=j+1) begin
-                if ( rng[5*j+1] == 0 && rng[5*j] == 0 && obstacle_storage[14][j] == 0 ) begin
+                if (cars_follow_ramp[j] != 0) begin
+                    cars_follow_ramp[j] <= cars_follow_ramp[j] - 1;
+                    if (cars_follow_ramp[j][0] == 0) begin
+                        obstacle_storage[15][j] <= 4'b0100;
+                        obstacle_storage[14][j] <= 4'b1100;
+                    end
+                end else if (rng[5*j+1] == 0 && rng[5*j] == 0 && obstacle_storage[14][j] == 0 ) begin
                 // if (1) begin
                     // 1/4 probability, using 5j+1:5j
 
-                    if (rng[5*j+2] == 0) begin
+                    // don't put barriers right after train cars/ramps
+                    if (rng[5*j+2] == 0 && obstacle_storage[13][j][2] == 0) begin
                         // 1/2 probability, generating a barrier
 
                         if (rng[5*j+4] == 0 && rng[5*j+3] == 0) begin
@@ -151,6 +161,7 @@ module obstacle_generator #(
                             // 1/4 probability ramp
                             obstacle_storage[15][j] <= 4'b0101;
                             obstacle_storage[14][j] <= 4'b1101;
+                            cars_follow_ramp[j] <= 3'b111;
                         end else begin
                             obstacle_storage[15][j] <= 4'b0100;
                             obstacle_storage[14][j] <= 4'b1100;

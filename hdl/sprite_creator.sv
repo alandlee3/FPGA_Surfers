@@ -6,6 +6,7 @@ module sprite_creator (
         input wire signed [15:0] player_height,
         input wire [1:0] player_lane,
         input wire activate, // 1 cycle high activate
+        input wire ducking, // if 1 then animate ducking for sprite
 
         output logic [47:0] vertex,
         output logic [15:0] color,
@@ -64,137 +65,267 @@ module sprite_creator (
             end
         end else if(state == ACTIVE) begin
             active <= 1;
+            if(ducking) begin
+                if(counter == 0) begin
+                    vertex_x <= lane_left; // front 
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                    color <= 16'h0400;
+                end else if(counter == 1) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 2) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 3) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 4) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 5) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 6) begin
+                    color <= 16'h0200; // left side
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 7) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 8) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 9) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 10) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 11) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 12) begin // right side
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 13) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 14) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 15) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 16) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 17) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 18) begin
+                    // top
+                    color <= 16'h1404;
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 19) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 20) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 21) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 22) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 23) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 24) begin
+                    // bottom
+                    color <= 16'h2204;
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 25) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 26) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 27) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 28) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 29) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 16;
+                    vertex_z <= DEPTH_CLOSE;
 
-            if(counter == 0) begin
-                vertex_x <= lane_left; // front 
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_CLOSE;
-                color <= 16'h0400;
-            end else if(counter == 1) begin
-                vertex_x <= lane_right;
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 2) begin
-                vertex_x <= lane_left;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 3) begin
-                vertex_x <= lane_left;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 4) begin
-                vertex_x <= lane_right;
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 5) begin
-                vertex_x <= lane_right;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 6) begin
-                color <= 16'h0200; // left side
-                vertex_x <= lane_left;
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 7) begin
-                vertex_x <= lane_left;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 8) begin
-                vertex_x <= lane_left;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_FAR;
-            end else if(counter == 9) begin
-                vertex_x <= lane_left;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_FAR;
-            end else if(counter == 10) begin
-                vertex_x <= lane_left;
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_FAR;
-            end else if(counter == 11) begin
-                vertex_x <= lane_left;
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 12) begin // right side
-                vertex_x <= lane_right;
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 13) begin
-                vertex_x <= lane_right;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 14) begin
-                vertex_x <= lane_right;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_FAR;
-            end else if(counter == 15) begin
-                vertex_x <= lane_right;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_FAR;
-            end else if(counter == 16) begin
-                vertex_x <= lane_right;
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_FAR;
-            end else if(counter == 17) begin
-                vertex_x <= lane_right;
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 18) begin
-                // top
-                color <= 16'h1404;
-                vertex_x <= lane_left;
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 19) begin
-                vertex_x <= lane_right;
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 20) begin
-                vertex_x <= lane_right;
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_FAR;
-            end else if(counter == 21) begin
-                vertex_x <= lane_right;
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_FAR;
-            end else if(counter == 22) begin
-                vertex_x <= lane_left;
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_FAR;
-            end else if(counter == 23) begin
-                vertex_x <= lane_left;
-                vertex_y <= -player_height;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 24) begin
-                // bottom
-                color <= 16'h2204;
-                vertex_x <= lane_left;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 25) begin
-                vertex_x <= lane_right;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_CLOSE;
-            end else if(counter == 26) begin
-                vertex_x <= lane_right;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_FAR;
-            end else if(counter == 27) begin
-                vertex_x <= lane_right;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_FAR;
-            end else if(counter == 28) begin
-                vertex_x <= lane_left;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_FAR;
-            end else if(counter == 29) begin
-                vertex_x <= lane_left;
-                vertex_y <= -player_height - 32;
-                vertex_z <= DEPTH_CLOSE;
+                    state <= IDLE;
+                end
+            end else begin
+                if(counter == 0) begin
+                    vertex_x <= lane_left; // front 
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                    color <= 16'h0400;
+                end else if(counter == 1) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 2) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 3) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 4) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 5) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 6) begin
+                    color <= 16'h0200; // left side
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 7) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 8) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 9) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 10) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 11) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 12) begin // right side
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 13) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 14) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 15) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 16) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 17) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 18) begin
+                    // top
+                    color <= 16'h1404;
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 19) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 20) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 21) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 22) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 23) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 24) begin
+                    // bottom
+                    color <= 16'h2204;
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 25) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_CLOSE;
+                end else if(counter == 26) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 27) begin
+                    vertex_x <= lane_right;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 28) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_FAR;
+                end else if(counter == 29) begin
+                    vertex_x <= lane_left;
+                    vertex_y <= -player_height - 32;
+                    vertex_z <= DEPTH_CLOSE;
 
-                state <= IDLE;
+                    state <= IDLE;
+                end
             end
-
             counter <= counter + 1;
             new_triangle <= (counter_mod_3 == 0);
             if(counter_mod_3 < 2) begin

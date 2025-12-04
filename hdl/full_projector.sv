@@ -10,6 +10,7 @@ module full_projector (
     
     input wire signed [15:0] player_height,
     input wire [1:0] player_lane,
+    input wire ducking,
 
     output logic [127:0] triangle,
     output logic triangle_valid,
@@ -39,6 +40,7 @@ module full_projector (
         .player_height(player_height),
         .player_lane(player_lane),
         .activate(activate_screator),
+        .ducking(ducking),
 
         .vertex(s_vertex),
         .color(s_color),
