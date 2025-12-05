@@ -170,9 +170,9 @@ module top_level(
 
     game_logic #(
         .HALF_BLOCK_LENGTH(64), // length in "score points" of half block
-        .GRAVITY(1), // how much vertical velocity decreases per frame, in 64ths
-        .DUCK_LIMIT(96), // how long a duck lasts for
-        .VERTICAL_JUMP(138), // how much vertical velocity a jump gives, in 64ths
+        .GRAVITY(1), // how much vertical velocity decreases per frame, in 128ths
+        .DUCK_LIMIT(128), // how long a duck lasts for
+        .VERTICAL_JUMP(190), // how much vertical velocity a jump gives, in 128ths
         .SPEED(1), // how many "score points" we move up per frame, MUST divide HALF_BLOCK_LENGTH/2
         .GROUND(-128), // where the floor of the game is (no train car)
         .MARGIN_OF_ERROR(15) // how below the ground level of a train car we can be without dying

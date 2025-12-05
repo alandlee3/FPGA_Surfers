@@ -2,9 +2,9 @@
 `default_nettype none
 module game_logic #(
         parameter HALF_BLOCK_LENGTH = 64, // length in "score points" of half block
-        parameter GRAVITY = 1, // how much vertical velocity decreases (in 64ths) per frame
+        parameter GRAVITY = 1, // how much vertical velocity decreases (in 128ths) per frame
         parameter DUCK_LIMIT = 15, // how long a duck lasts for
-        parameter VERTICAL_JUMP = 138, // how much vertical velocity a jump gives (in 64ths)
+        parameter VERTICAL_JUMP = 190, // how much vertical velocity a jump gives (in 128ths)
         parameter SPEED = 1, // how many "score points" we move up per frame, MUST divide HALF_BLOCK_LENGTH/2
         parameter GROUND = -128, // where the floor of the game is (no train car)
         parameter MARGIN_OF_ERROR = 10 // how below the ground level of a train car we can be without dying
@@ -40,8 +40,8 @@ module game_logic #(
     // game_over above
     logic airborne;
     logic [$clog2(DUCK_LIMIT)-1:0] ducking_duration;
-    logic signed [10:0] vertical_velocity_64ths;
-    logic signed [10:0] new_vertical_velocity_64ths;
+    logic signed [13:0] vertical_velocity_128ths;
+    logic signed [13:0] new_vertical_velocity_128ths;
     // logic [$clog2(HALF_BLOCK_LENGTH)-1:0] half_block_progress;
 
     // logic signed [15:0] ground_level; // for where we fall to after jumping, determined by obstacle
@@ -49,10 +49,10 @@ module game_logic #(
     assign airborne = (player_height > ground_level);
 
     always_comb begin
-        if (airborne || vertical_velocity_64ths - GRAVITY > 0) begin
-            new_vertical_velocity_64ths = vertical_velocity_64ths - GRAVITY;
+        if (airborne || vertical_velocity_128ths - GRAVITY > 0) begin
+            new_vertical_velocity_128ths = vertical_velocity_128ths - GRAVITY;
         end else begin
-            new_vertical_velocity_64ths = 0;
+            new_vertical_velocity_128ths = 0;
         end
     end
 
@@ -64,7 +64,7 @@ module game_logic #(
             game_over <= 0;
             ducking <= 0;
             ducking_duration <= 0;
-            vertical_velocity_64ths <= 0;
+            vertical_velocity_128ths <= 0;
             half_block_progress <= 0;
         end else begin
             // OBSTACLE PROCESSING
@@ -151,7 +151,7 @@ module game_logic #(
                     if (jump) begin
                         ducking <= 0;
                         player_height <= player_height + (VERTICAL_JUMP / 64);
-                        vertical_velocity_64ths <= VERTICAL_JUMP;
+                        vertical_velocity_128ths <= VERTICAL_JUMP;
                     end
 
                     else if (ducking_duration < DUCK_LIMIT - 1) begin
@@ -176,22 +176,26 @@ module game_logic #(
                 else if (airborne) begin
                     // 2. ducking
                     if (duck) begin
-                        vertical_velocity_64ths <= $signed(-VERTICAL_JUMP);
-                        player_height <= player_height + $signed(-VERTICAL_JUMP/64);
+                        vertical_velocity_128ths <= $signed(-VERTICAL_JUMP);
+                        if (ground_level < player_height + $signed(-VERTICAL_JUMP/128)) begin
+                            player_height <= player_height + $signed(-VERTICAL_JUMP/128);
+                        end else begin
+                            player_height <= ground_level;
+                        end
                     end
 
                     // 1. doing nothing
                     // 3. trying to jump again --> transition to running state and then re-jump
-                    else if ($signed(player_height) + $signed(new_vertical_velocity_64ths >>> 6) < $signed(ground_level)) begin // hitting ground level
-                        if ($signed(player_height) + $signed(new_vertical_velocity_64ths >>> 6) >= $signed(ground_level) - MARGIN_OF_ERROR) begin
+                    else if ($signed(player_height) + $signed(new_vertical_velocity_128ths >>> 7) < $signed(ground_level)) begin // hitting ground level
+                        if ($signed(player_height) + $signed(new_vertical_velocity_128ths >>> 7) >= $signed(ground_level) - MARGIN_OF_ERROR) begin
                             player_height <= ground_level;
-                            vertical_velocity_64ths <= 0;
+                            vertical_velocity_128ths <= 0;
                         end else begin
                             game_over <= 1;
                         end
                     end else begin // still gonna be in the air
-                        vertical_velocity_64ths <= new_vertical_velocity_64ths;
-                        player_height <= $signed(player_height) + $signed(new_vertical_velocity_64ths >>> 6);
+                        vertical_velocity_128ths <= new_vertical_velocity_128ths;
+                        player_height <= $signed(player_height) + $signed(new_vertical_velocity_128ths >>> 7);
                     end
                 end
 
@@ -207,8 +211,8 @@ module game_logic #(
 
                     // 3. jumping
                     else if (jump) begin
-                        player_height <= player_height + $signed(VERTICAL_JUMP/64);
-                        vertical_velocity_64ths <= VERTICAL_JUMP;
+                        player_height <= player_height + $signed(VERTICAL_JUMP/128);
+                        vertical_velocity_128ths <= VERTICAL_JUMP;
                     end
 
                     // 1. doing nothing
