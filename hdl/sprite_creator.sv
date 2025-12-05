@@ -23,6 +23,10 @@ module sprite_creator (
 
     localparam DEPTH_CLOSE = 176;
     localparam DEPTH_FAR = 208;
+    
+    localparam GROUND = 128;
+    localparam LANESTART = 64;
+    localparam LANEEND = 512;
 
     localparam signed [15:0] Z_OFFSET = 0;
 
@@ -192,8 +196,6 @@ module sprite_creator (
                     vertex_x <= lane_left;
                     vertex_y <= -player_height - 16;
                     vertex_z <= DEPTH_CLOSE;
-
-                    state <= IDLE;
                 end
             end else begin
                 if(counter == 0) begin
@@ -322,10 +324,87 @@ module sprite_creator (
                     vertex_x <= lane_left;
                     vertex_y <= -player_height - 32;
                     vertex_z <= DEPTH_CLOSE;
-
-                    state <= IDLE;
                 end
             end
+
+            // Lane Lines
+            if (counter == 30) begin 
+                vertex_x <= LEFTLANELEFT;
+                vertex_y <= GROUND;
+                vertex_z <= LANESTART;
+                color <= 16'h0000; // black lane lines
+            end else if (counter == 31) begin
+                vertex_x <= LEFTLANELEFT+4;
+                vertex_y <= GROUND;
+                vertex_z <= LANESTART;
+            end else if (counter == 32) begin
+                vertex_x <= LEFTLANELEFT;
+                vertex_y <= GROUND;
+                vertex_z <= LANEEND;
+            end else if (counter == 33) begin
+                vertex_x <= LEFTLANERIGHT;
+                vertex_y <= GROUND;
+                vertex_z <= LANESTART;
+            end else if (counter == 34) begin
+                vertex_x <= LEFTLANERIGHT-4;
+                vertex_y <= GROUND;
+                vertex_z <= LANESTART;
+            end else if (counter == 35) begin
+                vertex_x <= LEFTLANERIGHT;
+                vertex_y <= GROUND;
+                vertex_z <= LANEEND;
+            end else if (counter == 36) begin 
+                vertex_x <= MIDDLELANELEFT;
+                vertex_y <= GROUND;
+                vertex_z <= LANESTART;
+                color <= 16'h0000; // black lane lines
+            end else if (counter == 37) begin
+                vertex_x <= MIDDLELANELEFT+4;
+                vertex_y <= GROUND;
+                vertex_z <= LANESTART;
+            end else if (counter == 38) begin
+                vertex_x <= MIDDLELANELEFT;
+                vertex_y <= GROUND;
+                vertex_z <= LANEEND;
+            end else if (counter == 39) begin
+                vertex_x <= MIDDLELANERIGHT;
+                vertex_y <= GROUND;
+                vertex_z <= LANESTART;
+            end else if (counter == 40) begin
+                vertex_x <= MIDDLELANERIGHT-4;
+                vertex_y <= GROUND;
+                vertex_z <= LANESTART;
+            end else if (counter == 41) begin
+                vertex_x <= MIDDLELANERIGHT;
+                vertex_y <= GROUND;
+                vertex_z <= LANEEND;
+            end else if (counter == 42) begin 
+                vertex_x <= RIGHTLANELEFT;
+                vertex_y <= GROUND;
+                vertex_z <= LANESTART;
+            end else if (counter == 43) begin
+                vertex_x <= RIGHTLANELEFT+4;
+                vertex_y <= GROUND;
+                vertex_z <= LANESTART;
+            end else if (counter == 44) begin
+                vertex_x <= RIGHTLANELEFT;
+                vertex_y <= GROUND;
+                vertex_z <= LANEEND;
+            end else if (counter == 45) begin
+                vertex_x <= RIGHTLANERIGHT;
+                vertex_y <= GROUND;
+                vertex_z <= LANESTART;
+            end else if (counter == 46) begin
+                vertex_x <= RIGHTLANERIGHT-4;
+                vertex_y <= GROUND;
+                vertex_z <= LANESTART;
+            end else if (counter == 47) begin
+                vertex_x <= RIGHTLANERIGHT;
+                vertex_y <= GROUND;
+                vertex_z <= LANEEND;
+                state <= IDLE;
+            end
+
             counter <= counter + 1;
             new_triangle <= (counter_mod_3 == 0);
             if(counter_mod_3 < 2) begin

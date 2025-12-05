@@ -35,6 +35,7 @@ module triangle_creator (
     localparam MIDDLELANERIGHT = 32;
     localparam RIGHTLANELEFT = 64;
     localparam RIGHTLANERIGHT = 128;
+    localparam BARRIER_PEG_WIDTH = 10;
 
     localparam GROUND = 128;
     localparam MID = 96;
@@ -152,8 +153,56 @@ module triangle_creator (
                     vertex_z <= obstacle_depth - 32;
                     vertex_x <= lane_left;
                     vertex_y <= TOP;
+                end else if(vertex_counter == 6) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_left;
+                    vertex_y <= MID;
+                end else if (vertex_counter == 7) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_left;
+                    vertex_y <= GROUND;
+                end else if(vertex_counter == 8) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_left + BARRIER_PEG_WIDTH;
+                    vertex_y <= GROUND;
+                end else if(vertex_counter == 9) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_left + BARRIER_PEG_WIDTH;
+                    vertex_y <= GROUND;
+                end else if (vertex_counter == 10) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_left + BARRIER_PEG_WIDTH;
+                    vertex_y <= MID;
+                end else if(vertex_counter == 11) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_left;
+                    vertex_y <= MID;
+                end else if(vertex_counter == 12) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_right - BARRIER_PEG_WIDTH;
+                    vertex_y <= MID;
+                end else if (vertex_counter == 13) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_right - BARRIER_PEG_WIDTH;
+                    vertex_y <= GROUND;
+                end else if(vertex_counter == 14) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_right;
+                    vertex_y <= MID;
+                end else if(vertex_counter == 15) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_right;
+                    vertex_y <= MID;
+                end else if (vertex_counter == 16) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_right - BARRIER_PEG_WIDTH;
+                    vertex_y <= GROUND;
+                end else if(vertex_counter == 17) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_right;
+                    vertex_y <= GROUND;
                     state <= IDLE;
-                end
+                end 
             end else if(obstacle_type == 3) begin
 
                 if(obstacle_depth < 32 + MINZ) begin
@@ -184,6 +233,54 @@ module triangle_creator (
                     vertex_z <= obstacle_depth - 32;
                     vertex_x <= lane_left;
                     vertex_y <= MID+8;
+                end  else if(vertex_counter == 6) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_left;
+                    vertex_y <= MID;
+                end else if (vertex_counter == 7) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_left;
+                    vertex_y <= GROUND;
+                end else if(vertex_counter == 8) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_left + BARRIER_PEG_WIDTH;
+                    vertex_y <= GROUND;
+                end else if(vertex_counter == 9) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_left + BARRIER_PEG_WIDTH;
+                    vertex_y <= GROUND;
+                end else if (vertex_counter == 10) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_left + BARRIER_PEG_WIDTH;
+                    vertex_y <= MID;
+                end else if(vertex_counter == 11) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_left;
+                    vertex_y <= MID;
+                end else if(vertex_counter == 12) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_right - BARRIER_PEG_WIDTH;
+                    vertex_y <= MID;
+                end else if (vertex_counter == 13) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_right - BARRIER_PEG_WIDTH;
+                    vertex_y <= GROUND;
+                end else if(vertex_counter == 14) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_right;
+                    vertex_y <= MID;
+                end else if(vertex_counter == 15) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_right;
+                    vertex_y <= MID;
+                end else if (vertex_counter == 16) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_right - BARRIER_PEG_WIDTH;
+                    vertex_y <= GROUND;
+                end else if(vertex_counter == 17) begin
+                    vertex_z <= obstacle_depth - 32;
+                    vertex_x <= lane_right;
+                    vertex_y <= GROUND;
                     state <= IDLE;
                 end
             end else if(obstacle_type == 4) begin

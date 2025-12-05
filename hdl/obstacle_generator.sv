@@ -2,12 +2,12 @@
 `default_nettype none
 
 module obstacle_generator #(
-    parameter CYCLES_PER_OBSTACLE = 30,
-    parameter SPEED = 1
+    parameter CYCLES_PER_OBSTACLE = 30
 ) (
     input wire clk,
     input wire rst,
     input wire activate, // one cycle high activate
+    input wire [3:0] speed,
 
     output logic valid,
     output logic first_row,
@@ -100,9 +100,9 @@ module obstacle_generator #(
                 state <= OBSTACLE_SHIFT;
             end
         end else if (state == OBSTACLE_SHIFT) begin
-            current_depth <= current_depth + SPEED;
+            current_depth <= current_depth + speed;
 
-            if (current_depth >= HALF_BLOCK - SPEED) begin
+            if (current_depth >= HALF_BLOCK - speed) begin
 
                 // must shift all obstacles forward
                 for(int j = 0; j < 3; j=j+1) begin
@@ -120,7 +120,7 @@ module obstacle_generator #(
                 output_cycle <= 0;
                 output_lane <= 0;
                 output_block <= 0;
-                depth <= HALF_BLOCK - SPEED - current_depth;
+                depth <= HALF_BLOCK - speed - current_depth;
             end
         end else if(state == GENERATION) begin
             

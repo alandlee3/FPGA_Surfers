@@ -95,17 +95,23 @@ module top_level(
 
     assign ddr3_clk_locked = lab06_clk_locked;
 
-     ///////////////////////////////////////// OBSTACLE GENERATION //////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////// OBSTACLE GENERATION //////////////////////////////////////////////////////////////////
+    // speed dictates entire game pace
+    logic [3:0] speed;
+    assign speed = sw[7:4];
+    
     logic new_frame;
     logic [15:0] obstacle;
     logic obstacle_valid;
     logic firstrow;
     logic obstacles_done;
     
+    
     obstacle_generator #(.CYCLES_PER_OBSTACLE(30)) obs_gen (
         .clk(clk_render),
         .rst(state == RST),
         .activate(new_frame), // one cycle high activate
+        .speed(speed),
 
         .valid(obstacle_valid),
         .first_row(firstrow),
@@ -162,25 +168,40 @@ module top_level(
         end
     endgenerate
 
-    logic obstacle_in_half_block;
-    logic signed [15:0] ground_level;
-    logic [5:0] half_block_progress;
-    logic [1:0] gravity_32nds;
-    logic [2:0] vertical_jump;
+
+    // APPROPRIATE VALUE FOR DIFFERENT SPEEDS/DIFFICULTIES
+    // SPEED 1 | GRAVITY 1  | DUCK_LIMIT 128 | VERTICAL_JUMP ??
+    // SPEED 2 | GRAVITY 4  | DUCK_LIMIT 64  | VERTICAL_JUMP ??
+    // SPEED 4 | GRAVITY 15 | DUCK_LIMIT 32  | VERTICAL_JUMP 470
+    // SPEED 8 | GRAVITY ?? | DUCK_LIMIT 16  | VERTICAL_JUMP ??
+    logic [5:0] gravity;
+    logic [7:0] duck_limit;
+    logic [9:0] vertical_jump;
     logic ducking;
+
+    speed_params speed_param_inst (
+        .speed(speed),
+        .gravity(gravity),
+        .duck_limit(duck_limit),
+        .vertical_jump(vertical_jump)
+    );
 
     game_logic #(
         .HALF_BLOCK_LENGTH(64), // length in "score points" of half block
-        .GRAVITY(1), // how much vertical velocity decreases per frame, in 128ths
-        .DUCK_LIMIT(128), // how long a duck lasts for
-        .VERTICAL_JUMP(190), // how much vertical velocity a jump gives, in 128ths
-        .SPEED(1), // how many "score points" we move up per frame, MUST divide HALF_BLOCK_LENGTH/2
+        // .GRAVITY(15), // how much vertical velocity decreases per frame, in 128ths
+        // .DUCK_LIMIT(32), // how long a duck lasts for
+        // .VERTICAL_JUMP(470), // how much vertical velocity a jump gives, in 128ths
+        // .SPEED(4), // how many "score points" we move up per frame, MUST divide HALF_BLOCK_LENGTH/2
         .GROUND(-128), // where the floor of the game is (no train car)
         .MARGIN_OF_ERROR(15) // how below the ground level of a train car we can be without dying
     ) game (
         .clk(clk_render),
         .rst(state == RST),
         .new_frame(new_frame),
+        .gravity(gravity), // how much vertical velocity decreases per frame, in 128ths
+        .duck_limit(duck_limit), // how long a duck lasts for
+        .vertical_jump(vertical_jump), // how much vertical velocity a jump gives, in 128ths
+        .speed(speed), // how many "score points" we move up per frame, MUST divide HALF_BLOCK_LENGTH/2
         .obstacle(obstacle),
         .obstacle_valid(obstacle_valid),
         .duck(actual_controls[2]),
@@ -192,9 +213,6 @@ module top_level(
         .player_lane(player_lane),
         .player_height(player_height),
         .player_score(player_score),
-        .obstacle_in_half_block(obstacle_in_half_block),
-        .ground_level(ground_level),
-        .half_block_progress(half_block_progress),
         .ducking(ducking)
     );
 
@@ -529,7 +547,7 @@ module top_level(
     seven_segment_controller mssc(
      .clk(clk_render),
      .rst(sys_rst_render),
-     .val({ground_level, player_height}),
+     .val({player_score, sampled_frame_rate}),
      .cat(ss_c),
      .an({ss0_an, ss1_an})
      );
@@ -545,7 +563,6 @@ module top_level(
     assign led[7:0] = renderer_inst.num_triangles[7:0];
 
     assign led[15] = game_over;
-    assign led[14] = obstacle_in_half_block;
     // assign led[13] = reached;
     // assign led[4] = render_pixel[15];
     // assign led[3] = render_h_count[8];
