@@ -44,31 +44,41 @@ async def test_a(dut):
     def convert_to_triangle(color, p1x, p1y, p2x, p2y, p3x, p3y, total_depth):
         return color * (2**112) + p1x * (2**96) + p1y * (2**80) + p2x * (2**64) + p2y * (2**48) + p3x * (2**32) + p3y * (2**16) + total_depth
 
+    # await ClockCycles(dut.clk, 1)
+    # dut.xcoord_in.value = 300
+    # dut.ycoord_in.value = 200
+    # dut.pixel_data_in.value = 0xFF000001
+    # dut.triangle.value = convert_to_triangle(0xFFFF, 0, 0, 2**16 - 15, 2408, 2408, 2408, 10)
+    # dut.pixel_in_valid.value = 1
+    
     await ClockCycles(dut.clk, 1)
-    dut.xcoord_in.value = 0
-    dut.ycoord_in.value = 0
-    dut.pixel_data_in.value = 0xFFFF
-    dut.triangle.value = convert_to_triangle(0xFFFF, 50, 0, 150, 50, 200, 200, 10)
+    dut.xcoord_in.value = 500
+    dut.ycoord_in.value = 500
+    dut.pixel_data_in.value = 0xFF000001
+    dut.triangle.value = convert_to_triangle(0xFFFF, 2**16-45, 2**16-45, 2**16 - 45, 45, 100, 45, 10)
     dut.pixel_in_valid.value = 1
 
-    # closer to boundary, large coordinates
     await ClockCycles(dut.clk, 1)
-    dut.xcoord_in.value = 200
-    dut.ycoord_in.value = 82
-    dut.pixel_data_in.value = 16 * (2**16) + 15
-    dut.triangle.value = convert_to_triangle(57069, 200, 82, 300, 110, 40, 30, 14)
-    dut.pixel_in_valid.value = 1
+    dut.pixel_in_valid.value = 0
 
-    # this test was failing in test_renderer
-    # should not be in triangle, should not be recolored
-    await ClockCycles(dut.clk, 1)
-    dut.xcoord_in.value = 235
-    dut.ycoord_in.value = 23
-    dut.pixel_data_in.value = 16 * (2**16) + 15
-    dut.triangle.value = convert_to_triangle(57069, 0, 0, 70, 150, 70, 100, 5)
-    dut.pixel_in_valid.value = 1
+    # # closer to boundary, large coordinates
+    # await ClockCycles(dut.clk, 1)
+    # dut.xcoord_in.value = 200
+    # dut.ycoord_in.value = 82
+    # dut.pixel_data_in.value = 16 * (2**16) + 15
+    # dut.triangle.value = convert_to_triangle(57069, 200, 82, 300, 110, 40, 30, 14)
+    # dut.pixel_in_valid.value = 1
 
-    await ClockCycles(dut.clk, 3)
+    # # this test was failing in test_renderer
+    # # should not be in triangle, should not be recolored
+    # await ClockCycles(dut.clk, 1)
+    # dut.xcoord_in.value = 235
+    # dut.ycoord_in.value = 23
+    # dut.pixel_data_in.value = 16 * (2**16) + 15
+    # dut.triangle.value = convert_to_triangle(57069, 0, 0, 70, 150, 70, 100, 5)
+    # dut.pixel_in_valid.value = 1
+
+    # await ClockCycles(dut.clk, 3)
     # # move triangle to make pixel not inside, also vary depth (but still behind)
     # await ClockCycles(dut.clk, 1)
     # dut.xcoord_in.value = 10
@@ -101,7 +111,7 @@ async def test_a(dut):
     # dut.triangle.value = convert_to_triangle(57069, 2**16 - 150, 2**16 - 10, 35, 80, 17, 10, 15)
     # dut.pixel_in_valid.value = 1
 
-    # await ClockCycles(dut.clk, 3)
+    await ClockCycles(dut.clk, 3)
 
 def pixel_calculator_runner():
     """Tile Painter Tester."""

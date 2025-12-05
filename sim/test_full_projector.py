@@ -21,7 +21,7 @@ def convert_to_triangle(color, p1x, p1y, p2x, p2y, p3x, p3y, total_depth):
 def convert_to_obstacle(type, lane, depth):
     return lane * (2**11) + type * (2**13) + depth
 
-OBSTACLES = [ (4, 1, 1024) ]
+OBSTACLES = [ (4, 1, 1024), (4, 0, 1024), (4, 1, 64), (4, 2, 128) ]
 
 @cocotb.test()
 async def test_a(dut):
@@ -36,7 +36,7 @@ async def test_a(dut):
     dut.done_in.value = 0
     dut.obstacle.value = 0
     dut.player_height.value = 2**16-128
-    dut.player_lane.value = 1
+    dut.player_lane.value = 0
 
     await ClockCycles(dut.clk, 3)
 

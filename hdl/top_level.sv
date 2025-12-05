@@ -49,6 +49,7 @@ module top_level(
 
     assign sys_rst_render = sw[0];
     assign sys_rst_pixel = sw[0];
+    assign sys_rst_controller = sw[0];
 
     logic          clk_pixel;
     logic          clk_5x;
@@ -199,8 +200,8 @@ module top_level(
 
     ///////////////////////////////////////// RENDERING //////////////////////////////////////////////////////////////////
 
-    logic [8:0] render_h_count;
-    logic [7:0] render_v_count;
+    logic [10:0] render_h_count;
+    logic [9:0] render_v_count;
     logic render_valid;
     logic [15:0] render_pixel;
 
@@ -293,18 +294,18 @@ module top_level(
         // Input data from game
         .clk_camera      (clk_render),
         .sys_rst_camera  (sys_rst_render),
-        .camera_valid    (0),
-        .camera_pixel    (0),
-        .camera_h_count  (0),
-        .camera_v_count  (0),
+        .camera_valid    (render_valid),
+        .camera_pixel    (render_pixel),
+        .camera_h_count  (render_h_count),
+        .camera_v_count  (render_v_count),
         
         // Output data to HDMI display pipeline
         .clk_pixel       (clk_pixel),
         .sys_rst_pixel   (sys_rst_pixel),
-        .active_draw_hdmi(0),
-        .h_count_hdmi    (0),
-        .v_count_hdmi    (0),
-        .frame_buff_dram (),
+        .active_draw_hdmi(active_draw_hdmi),
+        .h_count_hdmi    (h_count_hdmi),
+        .v_count_hdmi    (v_count_hdmi),
+        .frame_buff_dram (frame_buff_raw),
 
         // Clock/reset signals for UberDDR3 controller
         .clk_controller  (clk_controller),
@@ -362,43 +363,41 @@ module top_level(
 
     logic [15:0] frame_buff_raw; // the frame buffer output.
 
-    localparam FB_DEPTH = 320*180;
-    localparam FB_SIZE = $clog2(FB_DEPTH);
-    logic [FB_SIZE-1:0] addra;
-    assign addra = render_v_count * 320 + render_h_count;
+    // localparam FB_DEPTH = 320*180;
+    // localparam FB_SIZE = $clog2(FB_DEPTH);
+    // logic [FB_SIZE-1:0] addra;
+    // assign addra = render_v_count * 320 + render_h_count;
 
-    logic [15:0]        camera_mem; //used to pass pixel data into frame buffer
+    // xilinx_true_dual_port_read_first_2_clock_ram #(
+    //     .RAM_WIDTH(16), //each entry in this memory is 16 bits
+    //     .RAM_DEPTH(FB_DEPTH)) //there are 320*180 or 57600 entries for full frame
+    // frame_buffer (
+    //     .addra(addra), //pixels are stored using this math
+    //     .clka(clk_render),
+    //     .wea(render_valid),
+    //     .dina(render_pixel),
+    //     .ena(1'b1),
+    //     .regcea(1'b1),
+    //     .rsta(sw[0]),
+    //     .douta(), //never read from this side
+    //     .addrb(addrb),//transformed lookup pixel
+    //     .dinb(16'b0),
+    //     .clkb(clk_pixel),
+    //     .web(1'b0),
+    //     .enb(1'b1),
+    //     .rstb(sw[0]),
+    //     .regceb(1'b1),
+    //     .doutb(frame_buff_raw)
+    // );
 
-    xilinx_true_dual_port_read_first_2_clock_ram #(
-        .RAM_WIDTH(16), //each entry in this memory is 16 bits
-        .RAM_DEPTH(FB_DEPTH)) //there are 320*180 or 57600 entries for full frame
-    frame_buffer (
-        .addra(addra), //pixels are stored using this math
-        .clka(clk_render),
-        .wea(render_valid),
-        .dina(render_pixel),
-        .ena(1'b1),
-        .regcea(1'b1),
-        .rsta(sw[0]),
-        .douta(), //never read from this side
-        .addrb(addrb),//transformed lookup pixel
-        .dinb(16'b0),
-        .clkb(clk_pixel),
-        .web(1'b0),
-        .enb(1'b1),
-        .rstb(sw[0]),
-        .regceb(1'b1),
-        .doutb(frame_buff_raw)
-    );
-
-    logic [FB_SIZE-1:0] addrb; //used to lookup address in memory for reading from buffer
+    // logic [FB_SIZE-1:0] addrb; //used to lookup address in memory for reading from buffer
     logic               good_addrb; //used to indicate within valid frame for scaling
     
     // // scale logic! copy in only the 4X zoom logic from last week. XX
 
     always_ff @(posedge clk_pixel) begin
         // you already wrote this!
-        addrb <= (h_count_hdmi >> 2) + 320*(v_count_hdmi >> 2);
+        // addrb <= (h_count_hdmi >> 2) + 320*(v_count_hdmi >> 2);
         good_addrb <= (h_count_hdmi<1280)&&(v_count_hdmi<720);
     end
     

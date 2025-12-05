@@ -24,7 +24,7 @@ module sprite_creator (
     localparam DEPTH_CLOSE = 176;
     localparam DEPTH_FAR = 208;
 
-    localparam signed [15:0] Z_OFFSET = 64;
+    localparam signed [15:0] Z_OFFSET = 0;
 
     logic [6:0] counter;
     logic [1:0] counter_mod_3;

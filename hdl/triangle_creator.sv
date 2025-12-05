@@ -18,7 +18,7 @@ module triangle_creator (
     // output vertices of each triangle one at a time
     // this means for each obstacle, may need up to 8 triangles --> 24 cycles, hopefully consecutively
 
-    localparam signed [15:0] Z_OFFSET = 64;
+    localparam signed [15:0] Z_OFFSET = 0;
     /*
     Types of obstacles:
     000 - No Obstacle

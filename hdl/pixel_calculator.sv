@@ -3,13 +3,13 @@
 module pixel_calculator (
         input wire clk,
         input wire rst,
-        input wire [8:0] xcoord_in,
-        input wire [7:0] ycoord_in,
+        input wire [10:0] xcoord_in,
+        input wire [9:0] ycoord_in,
         input wire [31:0] pixel_data_in, // top 16 bits color, bottom 16 bits depth
         input wire [127:0] triangle, // color|p1x|p1y|p2x|p2y|p3x|p3y|'depth', depth unsigned
         input wire pixel_in_valid,
-        output logic [8:0] xcoord_out,
-        output logic [7:0] ycoord_out,
+        output logic [10:0] xcoord_out,
+        output logic [9:0] ycoord_out,
         output logic [31:0] pixel_data_out, // top 16 bits color, bottom 16 bits depth
         output logic pixel_out_valid
     );
@@ -39,21 +39,21 @@ module pixel_calculator (
 
     // compute vector components for each side vector
     logic signed [1:0][15:0] ab, bc, ca;
-    assign ab[0] = p2x - p1x;// x coordinate
-    assign ab[1] = p2y - p1y;// y coordinate
-    assign bc[0] = p3x - p2x;// x coordinate
-    assign bc[1] = p3y - p2y;// y coordinate
-    assign ca[0] = p1x - p3x;// x coordinate
-    assign ca[1] = p1y - p3y;// y coordinate
+    assign ab[0] = $signed(p2x) - p1x;// x coordinate
+    assign ab[1] = $signed(p2y) - p1y;// y coordinate
+    assign bc[0] = $signed(p3x) - p2x;// x coordinate
+    assign bc[1] = $signed(p3y) - p2y;// y coordinate
+    assign ca[0] = $signed(p1x) - p3x;// x coordinate
+    assign ca[1] = $signed(p1y) - p3y;// y coordinate
 
     // compute vector components for each pixel vector
     logic signed [1:0][15:0] ap, bp, cp;
-    assign ap[0] = $signed(xcoord_in - p1x);
-    assign ap[1] = $signed(ycoord_in - p1y);
-    assign bp[0] = $signed(xcoord_in - p2x);
-    assign bp[1] = $signed(ycoord_in - p2y);
-    assign cp[0] = $signed(xcoord_in - p3x);
-    assign cp[1] = $signed(ycoord_in - p3y);
+    assign ap[0] = $signed({5'b0,xcoord_in}) - p1x;
+    assign ap[1] = $signed({6'b0,ycoord_in}) - p1y;
+    assign bp[0] = $signed({5'b0,xcoord_in}) - p2x;
+    assign bp[1] = $signed({6'b0,ycoord_in}) - p2y;
+    assign cp[0] = $signed({5'b0,xcoord_in}) - p3x;
+    assign cp[1] = $signed({6'b0,ycoord_in}) - p3y;
 
     // cross product registers
     logic signed [31:0] c11, c12, c21, c22, c31, c32;
@@ -67,7 +67,7 @@ module pixel_calculator (
     // check if pixel is in triangle AND triangle is closer to screen than last pixel triangle
     always_comb begin
         if (!rst) begin
-            if ((total_depth_buff < depth_data_buff) && (!points_form_vertical_line) && ((c11 - c12 >= 0 && c21 - c22 >= 0 && c31 - c32 >= 0) || (c11 - c12 <= 0 && c21 - c22 <= 0 && c31 - c32 <= 0))) begin
+            if ((total_depth_buff < depth_data_buff) && (!points_form_vertical_line) && (($signed(c11 - c12) >= 0 && $signed(c21 - c22) >= 0 && $signed(c31 - c32) >= 0) || ($signed(c11 - c12) <= 0 && $signed(c21 - c22) <= 0 && $signed(c31 - c32) <= 0))) begin
                 pixel_data_out = {triangle_color_buff, total_depth_buff};
             end else begin
                 pixel_data_out = {color_data_buff, depth_data_buff};
