@@ -33,6 +33,10 @@ module game_logic #(
     // ducking supersedes jumping in priority if applied together
     // can interrupt jump with duck and duck with jump
 
+    // do game logic computations AFTER all obstacles have been processed.
+    // requires a counter
+    logic [12:0] new_frame_delay;
+
     // lots of state variables
     // [15:0] player_height already above
     // [15:0] player_score already above
@@ -67,6 +71,12 @@ module game_logic #(
             vertical_velocity_128ths <= 0;
             half_block_progress <= 0;
         end else begin
+            if (new_frame) begin
+                new_frame_delay <= 2000;
+            end else if (new_frame_delay != 0) begin
+                new_frame_delay <= new_frame_delay - 1;
+            end
+
             // OBSTACLE PROCESSING
             if (obstacle_valid && firstrow && (obstacle[12:11] == player_lane) && !game_over) begin
                 obstacle_in_half_block <= 1;
@@ -126,9 +136,8 @@ module game_logic #(
                     default: ;
                 endcase
             end
-
             // GAME PROGRESSION
-            if (new_frame && !game_over) begin
+            if (new_frame_delay == 1 && !game_over) begin
                 // player moves forward
                 player_score <= player_score + SPEED;
                 if (half_block_progress < HALF_BLOCK_LENGTH - SPEED) begin
