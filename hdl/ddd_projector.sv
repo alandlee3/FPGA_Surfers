@@ -5,9 +5,9 @@
 // we get a vertex inputs which are still (0,0) at center of screen, so need to offset
 // all coordinates by (WIDTH/2, HEIGHT/2).
 module ddd_projector #(
-        parameter LOG_Z0 = 7,
-        parameter WIDTH = 320,
-        parameter HEIGHT = 180
+        parameter LOG_D = 8,
+        parameter WIDTH = 1280,
+        parameter HEIGHT = 720
     )(
         input wire clk,
         input wire rst,
@@ -32,8 +32,8 @@ module ddd_projector #(
     assign xcoord = xcoordneg ? 16'hFFFF - vertex[47:32] + 1: vertex[47:32];
     assign ycoord = ycoordneg ? 16'hFFFF - vertex[31:16] + 1: vertex[31:16];
     assign zcoord = zcoordneg ? 16'hFFFF - vertex[15:0] + 1: vertex[15:0];
-    assign xcoordz0 = xcoord << LOG_Z0;
-    assign ycoordz0 = ycoord << LOG_Z0;
+    assign xcoordz0 = xcoord << LOG_D;
+    assign ycoordz0 = ycoord << LOG_D;
 
 
     pipeline #(.WIDTH(1), .STAGES_NEEDED(16) ) xdiv_p

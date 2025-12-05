@@ -18,8 +18,8 @@ module renderer(
     input wire [127:0] triangle,
     input wire triangle_valid,
 
-    output logic [8:0] h_count, // not outputted in order!!!
-    output logic [7:0] v_count,
+    output logic [10:0] h_count, // not outputted in order!!!
+    output logic [9:0] v_count,
     output logic valid,
     output logic last, // if the h_count, v_count are the last of their frame.
     output logic [15:0] data,
@@ -88,7 +88,7 @@ module renderer(
         for (j = 0; j < N_WAY_PARALLEL; j=j+1) begin
             xilinx_true_dual_port_read_first_2_clock_ram #(
                 .RAM_WIDTH(32), //each pixel is 32 bits - 16 bits of color, 16 bits of depth
-                .RAM_DEPTH(900), // 20 x 45 tile
+                .RAM_DEPTH(800), // 80 x 10 tile
                 .INIT_FILE(`FPATH(tile_bram.mem))
             ) tile_bram (
                 .addra(tile_bram_pixel_in_addr[j]), // a is for writing in triangles!
@@ -127,12 +127,12 @@ module renderer(
     } renderer_state;
     renderer_state state;
 
-    logic [2:0] tile_index;
-    // 20 x 45 in 320 x 180
+    logic [6:0] tile_index;
+    // 80 x 10 in 1280 x 720
     // 16 way parallelization -> 1 row of tiles at once
 
-    logic [7:0] y_offset;
-    assign y_offset = tile_index * 45;
+    logic [9:0] y_offset;
+    assign y_offset = tile_index * 10;
 
     logic tile_painters_active;
     logic tile_painters_wipe;
@@ -152,7 +152,7 @@ module renderer(
                 .wipe(tile_painters_wipe),
                 
                 .num_triangles(num_triangles),
-                .x_offset(k * 20),
+                .x_offset(k * 80),
                 .y_offset(y_offset),
 
                 .bram_triangle_read_data(bram_triangle_out_data[k]),
@@ -172,16 +172,16 @@ module renderer(
 
     ////////////////////////////////////////////// FSM //////////////////////////////////////////////////
 
-    logic [8:0] h_count_state;
-    logic [4:0] h_count_modulo_20;
-    logic [3:0] h_count_div_20;
-    logic [7:0] v_count_state;
+    logic [10:0] h_count_state;
+    logic [6:0] h_count_modulo_80;
+    logic [3:0] h_count_div_80;
+    logic [9:0] v_count_state;
     logic [5:0] v_count_minus_offset;
     logic valid_state;
 
     logic [9:0] dram_wants_to_read_addr;
 
-    assign dram_wants_to_read_addr = v_count_minus_offset * 20 + h_count_modulo_20;
+    assign dram_wants_to_read_addr = v_count_minus_offset * 80 + h_count_modulo_80;
 
     always_comb begin
         for (int l = 0; l < N_WAY_PARALLEL; l=l+1) begin
@@ -189,13 +189,13 @@ module renderer(
         end
     end
 
-    pipeline #(.WIDTH(9), .STAGES_NEEDED(2)) h_count_pl (
+    pipeline #(.WIDTH(11), .STAGES_NEEDED(2)) h_count_pl (
         .clk(clk),
         .in(h_count_state),
         .out(h_count)
     );
 
-    pipeline #(.WIDTH(8), .STAGES_NEEDED(2)) v_count_pl (
+    pipeline #(.WIDTH(10), .STAGES_NEEDED(2)) v_count_pl (
         .clk(clk),
         .in(v_count_state),
         .out(v_count)
@@ -207,15 +207,17 @@ module renderer(
         .out(valid)
     );
 
-    logic [3:0] h_count_div_20_pl;
-    pipeline #(.WIDTH(4), .STAGES_NEEDED(2)) hcountdiv20_pl (
+    logic [3:0] h_count_div_80_pl;
+    pipeline #(.WIDTH(4), .STAGES_NEEDED(2)) hcountdiv80_pl (
         .clk(clk),
-        .in(h_count_div_20),
-        .out(h_count_div_20_pl)
+        .in(h_count_div_80),
+        .out(h_count_div_80_pl)
     );
 
-    assign last = (h_count == 319) && (v_count == 179);
-    assign data = tile_bram_pixel_out_data[h_count_div_20_pl][31:16];
+    assign last = (h_count == 1279) && (v_count == 719);
+    assign data = tile_bram_pixel_out_data[h_count_div_80_pl][31:16];
+
+    logic piss_counter; // can only output data every 2 cycles cuz dram is a pissbaby
 
     always_ff @( posedge clk ) begin
         bram_triangle_in_valid <= 0;
@@ -229,6 +231,7 @@ module renderer(
             state <= IDLE;
             num_triangles <= 0;
             valid_state <= 0;
+            piss_counter <= 0;
         end else if (state == IDLE) begin
             bram_triangle_in_addr <= num_triangles;
             bram_triangle_in_valid <= triangle_valid;
@@ -251,35 +254,45 @@ module renderer(
                 h_count_state <= 0;
                 v_count_state <= y_offset;
                 v_count_minus_offset <= 0;
-                h_count_modulo_20 <= 0;
-                h_count_div_20 <= 0;
+                h_count_modulo_80 <= 0;
+                h_count_div_80 <= 0;
                 valid_state <= 1;
             end
         end else if(state == WRITING_TO_DRAM) begin
             
-            if (h_count_modulo_20 < 19) begin
-                h_count_modulo_20 <= h_count_modulo_20 + 1;
-            end else begin
-                h_count_modulo_20 <= 0;
-                h_count_div_20 <= h_count_div_20 + 1; // wraparounds automatically cuz 4 bits
-            end
+            piss_counter <= !piss_counter;
 
-            if (h_count_state < 319) begin
-                h_count_state <= h_count_state + 1;
-            end else begin
-                h_count_state <= 0;
+            if(piss_counter == 0) begin 
 
-                if (v_count_state < y_offset + 44) begin
-                    v_count_state <= v_count_state + 1;
-                    v_count_minus_offset <= v_count_minus_offset + 1;
+                valid_state <= 1;
+            
+                if (h_count_modulo_80 < 79) begin
+                    h_count_modulo_80 <= h_count_modulo_80 + 1;
                 end else begin
-                    state <= INTERMEDIATE_BEFORE_WIPE_1;
-                    v_count_state <= 0;
-                    v_count_minus_offset <= 0;
-                    valid_state <= 0;
-
-                    tile_painters_wipe <= 1;
+                    h_count_modulo_80 <= 0;
+                    h_count_div_80 <= h_count_div_80 + 1; // wraparounds automatically cuz 4 bits
                 end
+
+                if (h_count_state < 1279) begin
+                    h_count_state <= h_count_state + 1;
+                end else begin
+                    h_count_state <= 0;
+
+                    if (v_count_minus_offset < 9) begin
+                        v_count_state <= v_count_state + 1;
+                        v_count_minus_offset <= v_count_minus_offset + 1;
+                    end else begin
+                        state <= INTERMEDIATE_BEFORE_WIPE_1;
+                        v_count_state <= 0;
+                        v_count_minus_offset <= 0;
+                        valid_state <= 0;
+
+                        tile_painters_wipe <= 1;
+                    end
+                end
+
+            end else begin
+                valid_state <= 0;
             end
         end else if (state == INTERMEDIATE_BEFORE_WIPE_1) begin
             state <= INTERMEDIATE_BEFORE_WIPE_2; // have to have this state b/c tile_painters_done is still high.
@@ -290,7 +303,7 @@ module renderer(
                 
                 tile_painters_wipe <= 0;
 
-                if(tile_index == 3) begin
+                if(tile_index == 71) begin
                     // we r sooo done
                     state <= DONE;
                 end else begin

@@ -15,7 +15,7 @@ def rgb(num):
 print(rgb(65280))
 
 def create_png(tile):
-    width = 320
+    width = 1280
     height = 180
     img = []
     for y in range(height):

@@ -2,9 +2,6 @@
 `default_nettype none
 
 
-// TODO: optimize lel
-
-
 module tile_painter #(parameter MAX_TRIANGLES=256) (
        input wire clk,
        input wire rst,
@@ -19,8 +16,8 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
 
 
        input wire [$clog2(MAX_TRIANGLES)-1:0] num_triangles,
-       input wire [8:0] x_offset, // x coord of the top left pixel of the current tile
-       input wire [7:0] y_offset, // y coord **
+       input wire [10:0] x_offset, // x coord of the top left pixel of the current tile
+       input wire [9:0] y_offset, // y coord **
 
 
        input wire [127:0] bram_triangle_read_data, // recall this is 2 cycles delayed from bram_triangle_read_addr
@@ -43,11 +40,11 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
 
    logic [8:0] x_offset_reading;
    logic [7:0] y_offset_reading;
-   logic [8:0] x_coord_reading; // x_coord = x_offset_reading + x_offset
-   logic [7:0] y_coord_reading;
+   logic [10:0] x_coord_reading; // x_coord = x_offset_reading + x_offset
+   logic [9:0] y_coord_reading;
   
-   logic [8:0] x_coord_calculating;
-   logic [7:0] y_coord_calculating;
+   logic [10:0] x_coord_calculating;
+   logic [9:0] y_coord_calculating;
    logic [8:0] x_offset_writing;
    logic [7:0] y_offset_writing;
 
@@ -78,14 +75,14 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
    assign y_coord_reading = y_offset + y_offset_reading;
 
 
-   pipeline #(.WIDTH(9), .STAGES_NEEDED(2)) x_coord_pl_inst (
+   pipeline #(.WIDTH(11), .STAGES_NEEDED(2)) x_coord_pl_inst (
        .clk(clk),
        .in(x_coord_reading),
        .out(x_coord_calculating)
    );
 
 
-   pipeline #(.WIDTH(8), .STAGES_NEEDED(2)) y_coord_pl_inst (
+   pipeline #(.WIDTH(10), .STAGES_NEEDED(2)) y_coord_pl_inst (
        .clk(clk),
        .in(y_coord_reading),
        .out(y_coord_calculating)
@@ -139,12 +136,12 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
    );
 
 
-   assign tile_bram_write_addr = (tile_state == WIPE) ? (y_wipe * 20 + x_wipe) : (y_offset_writing * 20 + x_offset_writing);
+   assign tile_bram_write_addr = (tile_state == WIPE) ? (y_wipe * 80 + x_wipe) : (y_offset_writing * 80 + x_offset_writing);
    assign tile_bram_write_data = (tile_state == WIPE) ? 32'hFFFFFFFF : writing_pixel_data;
    assign tile_bram_write_valid = (tile_state == WIPE) ? 1 : writing_coords_valid;
 
 
-   assign tile_bram_read_addr = y_offset_reading * 20 + x_offset_reading;
+   assign tile_bram_read_addr = y_offset_reading * 80 + x_offset_reading;
 
 
    logic [6:0] x_offset_lower_bound, y_offset_lower_bound, x_offset_upper_bound, y_offset_upper_bound;
@@ -201,16 +198,16 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
 
 
            // calculate for specific tile which bounds to use
-           x_offset_lower_bound <= ($signed(min_x) <= x_offset) ? 0 : ($signed(min_x) >= x_offset + 20) ? 20 : $signed(min_x) - x_offset;
-           y_offset_lower_bound <= ($signed(min_y) <= y_offset) ? 0 : ($signed(min_y) >= y_offset + 45) ? 45 : $signed(min_y) - y_offset;
-           x_offset_upper_bound <= ($signed(max_x) >= x_offset + 20) ? 20 : ($signed(max_x) <= x_offset) ? 0 : $signed(max_x) - x_offset;
-           y_offset_upper_bound <= ($signed(max_y) >= y_offset + 45) ? 45 : ($signed(max_y) <= y_offset) ? 0 : $signed(max_y) - y_offset;
+           x_offset_lower_bound <= ($signed(min_x) <= x_offset) ? 0 : ($signed(min_x) >= x_offset + 80) ? 80 : $signed(min_x) - x_offset;
+           y_offset_lower_bound <= ($signed(min_y) <= y_offset) ? 0 : ($signed(min_y) >= y_offset + 10) ? 10 : $signed(min_y) - y_offset;
+           x_offset_upper_bound <= ($signed(max_x) >= x_offset + 80) ? 80 : ($signed(max_x) <= x_offset) ? 0 : $signed(max_x) - x_offset;
+           y_offset_upper_bound <= ($signed(max_y) >= y_offset + 10) ? 10 : ($signed(max_y) <= y_offset) ? 0 : $signed(max_y) - y_offset;
 
 
            // compute if there's no intersection at all, too
-           no_intersection <=  ($signed(min_x) >= x_offset + 20) ||
+           no_intersection <=  ($signed(min_x) >= x_offset + 80) ||
                                ($signed(max_x) <= x_offset) ||
-                               ($signed(min_y) >= y_offset + 45) ||
+                               ($signed(min_y) >= y_offset + 10) ||
                                ($signed(max_y) <= y_offset);
 
 
@@ -269,14 +266,14 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
                y_wipe <= 0;
            end
        end else if(tile_state == WIPE) begin
-           if (x_wipe < 19) begin
+           if (x_wipe < 79) begin
                x_wipe <= x_wipe + 1;
            end else begin
                x_wipe <= 0;
 
 
-               // must cycle y_offset_reading from 0 to 44
-               if (y_wipe < 44) begin
+               // must cycle y_offset_reading from 0 to 9
+               if (y_wipe < 9) begin
                    y_wipe <= y_wipe + 1;
                end else begin
                    tile_state <= WIPEDONE;

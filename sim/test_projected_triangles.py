@@ -41,9 +41,9 @@ def to_triangle(num):
     return ((p1x, p1y), (p2x, p2y), (p3x, p3y), color, depth)
 
 
-scale = 5
+scale = 1
 def setup():
-    py5.size(320 * scale, 180 * scale)
+    py5.size(1280 * scale, 720 * scale)
     py5.background(255)
 
     triangles_dupe = [to_triangle(triangle) for triangle in triangles]
