@@ -124,7 +124,7 @@ module ddd_projector #(
         // calculate depth over two cycles, then pipeline while waiting for division
         logic [15:0] xcoord_sq, ycoord_sq, zcoord_sq;
         xcoord_sq <= (xcoord >> 4) * (xcoord >> 4);
-        ycoord_sq <= (ycoord >> 4) * (ycoord >> 4);
+        ycoord_sq <= (ycoord >> 4) * (ycoord >> 3);
         zcoord_sq <= (zcoord >> 4) * (zcoord >> 4);
         depth_buffer[0] <= xcoord_sq + ycoord_sq + zcoord_sq;
         new_triangle_buffer[0] <= new_triangle_in;

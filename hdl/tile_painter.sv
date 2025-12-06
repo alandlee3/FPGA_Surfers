@@ -162,6 +162,11 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
    assign min_x = (p1x <= p2x && p1x <= p3x) ? p1x : (p2x <= p3x) ? p2x : p3x;
    assign min_y = (p1y <= p2y && p1y <= p3y) ? p1y : (p2y <= p3y) ? p2y : p3y;
 
+    logic signed [11:0] x_offset_s;
+    logic signed [10:0] y_offset_s;
+
+    assign x_offset_s = {1'b0, x_offset};
+    assign y_offset_s = {1'b0, y_offset};
 
    always_ff @( posedge clk ) begin
       
@@ -198,17 +203,17 @@ module tile_painter #(parameter MAX_TRIANGLES=256) (
 
 
            // calculate for specific tile which bounds to use
-           x_offset_lower_bound <= ($signed(min_x) <= x_offset) ? 0 : ($signed(min_x) >= x_offset + 80) ? 80 : $signed(min_x) - x_offset;
-           y_offset_lower_bound <= ($signed(min_y) <= y_offset) ? 0 : ($signed(min_y) >= y_offset + 10) ? 10 : $signed(min_y) - y_offset;
-           x_offset_upper_bound <= ($signed(max_x) >= x_offset + 80) ? 80 : ($signed(max_x) <= x_offset) ? 0 : $signed(max_x) - x_offset;
-           y_offset_upper_bound <= ($signed(max_y) >= y_offset + 10) ? 10 : ($signed(max_y) <= y_offset) ? 0 : $signed(max_y) - y_offset;
+           x_offset_lower_bound <= ($signed(min_x) <= x_offset_s) ? 0 : ($signed(min_x) >= x_offset_s + 80) ? 80 : $signed(min_x) - x_offset_s;
+           y_offset_lower_bound <= ($signed(min_y) <= y_offset_s) ? 0 : ($signed(min_y) >= y_offset_s + 10) ? 10 : $signed(min_y) - y_offset_s;
+           x_offset_upper_bound <= ($signed(max_x) >= x_offset_s + 80) ? 80 : ($signed(max_x) <= x_offset_s) ? 0 : $signed(max_x) - x_offset_s;
+           y_offset_upper_bound <= ($signed(max_y) >= y_offset_s + 10) ? 10 : ($signed(max_y) <= y_offset_s) ? 0 : $signed(max_y) - y_offset_s;
 
 
            // compute if there's no intersection at all, too
-           no_intersection <=  ($signed(min_x) >= x_offset + 80) ||
-                               ($signed(max_x) <= x_offset) ||
-                               ($signed(min_y) >= y_offset + 10) ||
-                               ($signed(max_y) <= y_offset);
+           no_intersection <=  ($signed(min_x) >= x_offset_s + 80) ||
+                               ($signed(max_x) <= x_offset_s) ||
+                               ($signed(min_y) >= y_offset_s + 10) ||
+                               ($signed(max_y) <= y_offset_s);
 
 
            tile_state <= CALCULATING_BOUNDS;
