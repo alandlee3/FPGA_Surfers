@@ -12,23 +12,23 @@ always_comb begin
     if (speed == 1) begin
         gravity = 1;
         duck_limit = 128;
-        vertical_jump = 180; // TODO finetune
+        vertical_jump = 108;
     end else if (speed == 2) begin
         gravity = 4;
         duck_limit = 64;
-        vertical_jump = 300; // TODO finetune
+        vertical_jump = 220;
     end else if (speed == 4) begin
         gravity = 15;
         duck_limit = 32;
-        vertical_jump = 470;
+        vertical_jump = 420;
     end else if (speed == 8) begin
-        gravity = 60; // TODO finetune
+        gravity = 60;
         duck_limit = 16;
-        vertical_jump = 700; // TODO finetune
+        vertical_jump = 360; 
     end else begin
         gravity = 1;
         duck_limit = 128;
-        vertical_jump = 180; // TODO finetune
+        vertical_jump = 108;
     end
 end
 
