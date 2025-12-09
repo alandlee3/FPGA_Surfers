@@ -53,15 +53,11 @@ async def test_a(dut):
 
 
 def convert_to_triangle(color, p1x, p1y, p2x, p2y, p3x, p3y, total_depth):
-    return color * (2**112) + p1x * (2**96) + p1y * (2**80) + p2x * (2**64) + p2y * (2**48) + p3x * (2**32) + p3y * (2**16) + total_depth
+    return 2**32 * (color * (2**112) + p1x * (2**96) + p1y * (2**80) + p2x * (2**64) + p2y * (2**48) + p3x * (2**32) + p3y * (2**16)) + total_depth
 
 BRAM = [
-    convert_to_triangle(0xFF00,     5, 40, 15, 40, 15, 25, 50), # yellow
-    convert_to_triangle(0xFF00,     5, 40, 5, 25, 15, 25, 50), # yellow
-    convert_to_triangle(2**11 * 16, 15, 40, 24, 26, 15, 25, 18), # red
-    convert_to_triangle(2**11 * 16, 24, 15, 24, 26, 15, 25, 18), # red
-    convert_to_triangle(63,         5, 25, 15, 25, 16, 15, 10), # blue
-    convert_to_triangle(63,         16, 15, 24, 15, 15, 25, 10), # blue
+    convert_to_triangle(0xf000, 0, 0, 0, 10, 1280, 10, 0xff0b003a009c), # 58 0 -100, -62720
+    convert_to_triangle(0x001f, 1280, 0, 1280, 10, 0, 10, 0x00f5003a0064) # 58 0 100, 62720
 ]
 
 NUM_TRIANGLES = len(BRAM)
@@ -69,10 +65,10 @@ NUM_TRIANGLES = len(BRAM)
 # offsets here shouldn't do anything,
 # since BRAM doesn't carer about offset as the choice of BRAM already
 # encodes the offset
-X_OFFSET = 0
+X_OFFSET = 600
 Y_OFFSET = 0
 
-TILE = [0xFFFF] * (20*45)
+TILE = [0xFFFF] * (80*10)
 
 bram_read_on_deck = 0
 tile_read_on_deck = 0
@@ -120,7 +116,7 @@ def tile_painter_runner():
     sim = os.getenv("SIM","vivado")
     proj_path = Path(__file__).resolve().parent.parent
     sys.path.append(str(proj_path / "sim" / "model"))
-    sources = [proj_path / "hdl" / "pixel_calculator.sv", proj_path / "hdl" / "tile_painter.sv", proj_path / "hdl" / "pipeline.sv"]
+    sources = [proj_path / "hdl" / "pixel_calculator.sv", proj_path / "hdl" / "tile_painter.sv", proj_path / "hdl" / "pipeline.sv", proj_path / "hdl" / "depth_calculator.sv", proj_path / "hdl" / "divider3.sv", proj_path / "hdl" / "small_multiplier.sv"]
     build_test_args = ["-Wall"]
     #values for parameters defined earlier in the code.
     # parameters = { 'KERNEL_DIMENSION': 3, 'K_SELECT': 2} # sharpen for now

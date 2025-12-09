@@ -5,7 +5,7 @@
 // we get a vertex inputs which are still (0,0) at center of screen, so need to offset
 // all coordinates by (WIDTH/2, HEIGHT/2).
 module ddd_projector #(
-        parameter LOG_D = 8,
+        parameter LOG_D = 8, // this same parameter is in depth_calculator. Do not change either without changing the other.
         parameter WIDTH = 1280,
         parameter HEIGHT = 720
     )(
@@ -15,7 +15,7 @@ module ddd_projector #(
         input wire [15:0] color,
         input wire new_triangle_in, // high once at beginning of triangle
         input wire done_in, // done feeding all triangles
-        output logic [127:0] triangle, // color|p1x|p1y|p2x|p2y|p3x|p3y|'depth'
+        output logic [159:0] triangle, // color|p1x|p1y|p2x|p2y|p3x|p3y|p(24)|nx|ny|nz(8)
         output logic new_triangle_out,
         output logic done_out
     );
@@ -114,29 +114,112 @@ module ddd_projector #(
         new_triangle_out = new_triangle_buffer[17];
         if (new_triangle_buffer[17]) begin
             // need to grab all the results
-            triangle = {color_out, x_division_results[2], y_division_results[2], x_division_results[1], y_division_results[1], x_division_results[0], y_division_results[0], final_depth};
+            triangle = {color_out, x_division_results[2], y_division_results[2], x_division_results[1], y_division_results[1], x_division_results[0], y_division_results[0], p_out, cx_out, cy_out, cz_out};
         end else begin
             triangle = 0;
         end
     end
 
+    logic signed [15:0] v1x, v1y, v1z;
+    logic signed [15:0] v1x_1, v1y_1, v1z_1; // these values must be pipelined
+
+    logic signed [15:0] ax, ay, az, bx, by, bz;
+    logic [1:0] new_triangle_state; // cycles since new triangle
+
+    logic signed [19:0] cx_raw, cy_raw, cz_raw; // don't need 32 bits for this, x y coords are usually kinda smol
+
+    logic [4:0] logcx, logcy, logcz;
+    log2 xlog (
+        .clk(clk),
+        .c(cx_raw),
+        .e(logcx)
+    );
+    log2 ylog (
+        .clk(clk),
+        .c(cy_raw),
+        .e(logcy)
+    );
+    log2 zlog (
+        .clk(clk),
+        .c(cz_raw),
+        .e(logcz)
+    );
+    logic [4:0] big_log;
+    assign big_log = (logcx > logcz && logcx > logcy) ? logcx : ((logcy > logcz) ? logcy : logcz);
+
+    logic [4:0] cshift;
+    assign cshift = (big_log > 7) ? big_log - 7 : 0;
+
+    logic signed [7:0] cx, cy, cz;
+
+    logic signed [23:0] p;
+    logic [23:0] c;
+
+    logic [47:0] pc;
+    assign pc = {p, c};
+
+    logic [47:0] pc_out;
+
+    logic [23:0] p_out;
+    logic [7:0] cx_out, cy_out, cz_out;
+    assign p_out = pc_out[47:24];
+    assign cx_out = pc_out[23:16];
+    assign cy_out = pc_out[15:8];
+    assign cz_out = pc_out[7:0];
+
+    pipeline #(.WIDTH(48), .STAGES_NEEDED(12)) pc_pipeline (
+        .clk(clk),
+        .in(pc),
+        .out(pc_out)
+    );
+
     always_ff @(posedge clk) begin
-        // calculate depth over two cycles, then pipeline while waiting for division
-        logic [15:0] xcoord_sq, ycoord_sq, zcoord_sq;
-        xcoord_sq <= (xcoord >> 4) * (xcoord >> 4);
-        ycoord_sq <= (ycoord >> 4) * (ycoord >> 3);
-        zcoord_sq <= (zcoord >> 4) * (zcoord >> 4);
-        depth_buffer[0] <= xcoord_sq + ycoord_sq + zcoord_sq;
+
+        if (new_triangle_in) begin
+            v1x <= vertex[47:32];
+            v1y <= vertex[31:16];
+            v1z <= vertex[15:0];
+            new_triangle_state <= 1;
+        end else if (new_triangle_state == 1) begin
+            ax <= v1x - $signed(vertex[47:32]);
+            ay <= v1y - $signed(vertex[31:16]);
+            az <= v1z - $signed(vertex[15:0]);
+
+            new_triangle_state <= 2;
+        end else if (new_triangle_state == 2) begin
+            bx <= v1x - $signed(vertex[47:32]);
+            by <= v1y - $signed(vertex[31:16]);
+            bz <= v1z - $signed(vertex[15:0]);
+
+            new_triangle_state <= 3;
+        end
+
+        if (new_triangle_state == 3) begin 
+            v1x_1 <= v1x;
+            v1y_1 <= v1y;
+            v1z_1 <= v1z;
+        end
+
+        // cx_raw <= ay * (bz >> 4) - (az >> 4) * by;
+        // cy_raw <= (az >> 4) * bx - ax * (bz >> 4);
+        // cz_raw <= (ax >> 2) * (by >> 2) - (ay >> 2) * (bx >> 2);
+
+        cx_raw <= (ay * bz - az * by) >>> 4;
+        cy_raw <= (az * bx - ax * bz) >>> 4;
+        cz_raw <= (ax * by - ay * bx) >>> 4;
+
+        cx <= cx_raw >>> cshift;
+        cy <= cy_raw >>> cshift;
+        cz <= cz_raw >>> cshift;
+
+        p <= cx * v1x_1 + cy * v1y_1 + cz * v1z_1;
+        c <= {cx, cy, cz};
+
         new_triangle_buffer[0] <= new_triangle_in;
 
         for(int i = 0; i < 17; i = i+1) begin
             new_triangle_buffer[i+1] <= new_triangle_buffer[i];
         end
-
-        for(int i = 0; i < 15; i = i+1) begin
-            depth_buffer[i+1] <= depth_buffer[i];
-        end
-        final_depth <= depth_buffer[15] + depth_buffer[14] + depth_buffer[13];
 
         x_division_results[2] <= x_division_results[1];
         x_division_results[1] <= x_division_results[0];

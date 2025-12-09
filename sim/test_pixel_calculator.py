@@ -42,7 +42,7 @@ async def test_a(dut):
     # output logic pixel_out_valid
 
     def convert_to_triangle(color, p1x, p1y, p2x, p2y, p3x, p3y, total_depth):
-        return color * (2**112) + p1x * (2**96) + p1y * (2**80) + p2x * (2**64) + p2y * (2**48) + p3x * (2**32) + p3y * (2**16) + total_depth
+        return (color * (2**112) + p1x * (2**96) + p1y * (2**80) + p2x * (2**64) + p2y * (2**48) + p3x * (2**32) + p3y * (2**16)) * 2**32
 
     # await ClockCycles(dut.clk, 1)
     # dut.xcoord_in.value = 300
@@ -52,14 +52,14 @@ async def test_a(dut):
     # dut.pixel_in_valid.value = 1
     
     await ClockCycles(dut.clk, 1)
-    dut.xcoord_in.value = 10
-    dut.ycoord_in.value = 700
-    dut.pixel_data_in.value = 0xFF00000F
-    dut.triangle.value = convert_to_triangle(0xFFFF, 2**16-2, 800, 2**16 - 2, 620, 100, 600, 10)
-    dut.pixel_in_valid.value = 1
+    dut.xcoord_in.value = 60
+    dut.ycoord_in.value = 50
+    # dut.pixel_data_in.value = 0xFF00000F
+    dut.triangle.value = convert_to_triangle(0xFFFF, 0, 0, 100, 0, 0, 100, 10)
+    # dut.pixel_in_valid.value = 1
 
-    await ClockCycles(dut.clk, 1)
-    dut.pixel_in_valid.value = 0
+    await ClockCycles(dut.clk, 2)
+    # dut.pixel_in_valid.value = 0
 
     # # closer to boundary, large coordinates
     # await ClockCycles(dut.clk, 1)

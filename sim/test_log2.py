@@ -12,11 +12,13 @@ from cocotb.utils import get_sim_time as gst
 from vicoco.vivado_runner import get_runner
 test_file = os.path.basename(__file__).replace(".py","")
 
+random.seed(0)
+
 CLK_PERIOD = 10
 PCLK_PERIOD = 20
 
 def convert_to_triangle(color, p1x, p1y, p2x, p2y, p3x, p3y, total_depth):
-    return 2**32 * (color * (2**112) + p1x * (2**96) + p1y * (2**80) + p2x * (2**64) + p2y * (2**48) + p3x * (2**32) + p3y * (2**16)) + total_depth
+    return color * (2**112) + p1x * (2**96) + p1y * (2**80) + p2x * (2**64) + p2y * (2**48) + p3x * (2**32) + p3y * (2**16) + total_depth
 
 @cocotb.test()
 async def test_a(dut):
@@ -24,36 +26,16 @@ async def test_a(dut):
     dut._log.info("Starting...")
     cocotb.start_soon(Clock(dut.clk, CLK_PERIOD, units="ns").start())
 
-    dut._log.info("Holding reset...")
-    dut.rst.value = 1
+    await ClockCycles(dut.clk, 5)
 
-    dut.active.value = 0
-    dut.triangle.value = 0
-    dut.triangle_valid.value = 0
-
-    await ClockCycles(dut.clk, 3)
-
-    dut.rst.value = 0
-
+    dut.c = 625
     await ClockCycles(dut.clk, 1)
 
-    dut.triangle_valid.value = 1
-    dut.triangle.value = convert_to_triangle(0xf000, 0, 0, 0, 10, 1280, 10, 0xff0b003a009c)
+    for i in range(100):
+        dut.c = random.randint(0, 2**20-1)
+        await ClockCycles(dut.clk, 1)
 
-    await ClockCycles(dut.clk, 1)
 
-    dut.triangle_valid.value = 1
-    dut.triangle.value = convert_to_triangle(0xf000, 1280, 0, 1280, 10, 0, 10, 0x00f5003a0064)
-
-    await ClockCycles(dut.clk, 3)
-
-    dut.active.value = 1
-
-    for _ in range(10000):
-        await read_clock_cycle(dut)
-
-    with open("test_renderer_list.txt", "w") as file:
-        file.write(str(frame_buffer))
 
 def p_int(str):
     if str == 'X':
@@ -86,20 +68,20 @@ async def read_clock_cycle(dut):
 
 
 
-def renderer_runner():
-    """Renderer Tester."""
+def small_multiplier():
+    """small_multiplier Tester."""
     hdl_toplevel_lang = os.getenv("HDL_TOPLEVEL_LANG", "verilog")
     # sim = os.getenv("SIM", "icarus")
     sim = os.getenv("SIM","vivado")
     proj_path = Path(__file__).resolve().parent.parent
     sys.path.append(str(proj_path / "sim" / "model"))
-    sources = [proj_path / "hdl" / "renderer.sv", proj_path / "hdl" / "pixel_calculator.sv", proj_path / "hdl" / "tile_painter.sv", proj_path / "hdl" / "pipeline.sv", proj_path / "hdl" / "renderer.sv",  proj_path / "hdl" / "depth_calculator.sv", proj_path / "hdl" / "pipeline.sv", proj_path / "hdl" / "divider3.sv", proj_path / "hdl" / "small_multiplier.sv", proj_path / "hdl" / "xilinx_true_dual_port_read_first_2_clock_ram.v"]
+    sources = [proj_path / "hdl" / "log2.sv"]
     build_test_args = ["-Wall"]
     #values for parameters defined earlier in the code.
     # parameters = { 'KERNEL_DIMENSION': 3, 'K_SELECT': 2} # sharpen for now
  
     sys.path.append(str(proj_path / "sim"))
-    hdl_toplevel = "renderer"
+    hdl_toplevel = "log2"
     runner = get_runner(sim)
     runner.build(
         sources=sources,
@@ -119,4 +101,4 @@ def renderer_runner():
     )
 
 if __name__ == '__main__':
-    renderer_runner()
+    small_multiplier()

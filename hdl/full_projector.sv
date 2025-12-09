@@ -12,7 +12,7 @@ module full_projector (
     input wire [1:0] player_lane,
     input wire ducking,
 
-    output logic [127:0] triangle,
+    output logic [159:0] triangle,
     output logic triangle_valid,
     output logic done_out
     );

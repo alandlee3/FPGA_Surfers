@@ -21,7 +21,7 @@ def twos_comp_16_bit(num):
 
 def to_triangle(num):
     depth = num % (2 ** 16)
-    num //= 2 ** 16
+    num //= 2 ** 48
 
     p3y = twos_comp_16_bit(num % (2 ** 16))
     num //= 2 ** 16

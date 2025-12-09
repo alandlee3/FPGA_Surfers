@@ -95,7 +95,7 @@ def projector_runner():
     sim = os.getenv("SIM","vivado")
     proj_path = Path(__file__).resolve().parent.parent
     sys.path.append(str(proj_path / "sim" / "model"))
-    sources = [proj_path / "hdl" / "full_projector.sv", proj_path / "hdl" / "triangle_creator.sv", proj_path / "hdl" / "ddd_projector.sv", proj_path / "hdl" / "pipeline.sv", proj_path / "hdl" / "divider3.sv", proj_path / "hdl" / "sprite_creator.sv"]
+    sources = [proj_path / "hdl" / "full_projector.sv", proj_path / "hdl" / "triangle_creator.sv", proj_path / "hdl" / "ddd_projector.sv", proj_path / "hdl" / "pipeline.sv", proj_path / "hdl" / "divider3.sv", proj_path / "hdl" / "log2.sv", proj_path / "hdl" / "sprite_creator.sv"]
     build_test_args = ["-Wall"]
     #values for parameters defined earlier in the code.
     # parameters = { 'KERNEL_DIMENSION': 3, 'K_SELECT': 2} # sharpen for now
