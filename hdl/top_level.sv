@@ -75,7 +75,7 @@ module top_level(
     logic lab06_clk_locked;
 
     lab06_clk_wiz lcw(
-        .reset(sw[0]),
+        .reset(0),
         .clk_in1(clk_100mhz),
         .clk_camera(i_ref_clk),
         .clk_xc(clk_xc),

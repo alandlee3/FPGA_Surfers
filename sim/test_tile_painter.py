@@ -60,6 +60,8 @@ BRAM = [
     convert_to_triangle(0x001f, 1280, 0, 1280, 10, 0, 10, 0x00f5003a0064) # 58 0 100, 62720
 ]
 
+# 003f 0000 0000 0000 000a 0323 010f ff0b00 3a009c
+
 NUM_TRIANGLES = len(BRAM)
 
 # offsets here shouldn't do anything,

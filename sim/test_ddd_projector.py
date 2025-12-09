@@ -53,6 +53,9 @@ async def test_a(dut):
     dut.color.value = 63
     dut.new_triangle_in.value = 1
     dut.done_in.value = 0
+
+    # 003f 0000 0000 0000 000a 0323 010f ff0b00 3a009c
+
     # ff0b003a009c
     # 00f5003a0064
 

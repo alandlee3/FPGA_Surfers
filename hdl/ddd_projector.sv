@@ -22,7 +22,7 @@ module ddd_projector #(
 
     logic [15:0] color_out; // stores color to output after waiting 18 cycles for division/vertex collection
     logic [15:0] xcoord, ycoord, zcoord; // extracting unsigned coordinate data from vertex
-    logic [15:0] xcoordz0, ycoordz0; // multiplying by plane we project onto
+    logic [23:0] xcoordz0, ycoordz0; // multiplying by plane we project onto
     logic xcoordneg, ycoordneg, zcoordneg; // extracting signedness data from vertex
     logic xcoordneg_div, ycoordneg_div, zcoordneg_div; // pipelined signedness data after division
 
@@ -79,11 +79,40 @@ module ddd_projector #(
     // these should be correctly offset now
     logic [2:0][15:0] x_division_results, y_division_results;
 
+    logic [3:0] xcoordz0_right; // how much xcoordz0 should be bitshifted right to fit in 16 bits
+    logic [3:0] ycoordz0_right;
+    
+    always_comb begin
+        xcoordz0_right = 0;
+        ycoordz0_right = 0;
+        for (int i = 23; i >= 16; i=i-1) begin
+            if(xcoordz0[i]) begin
+                xcoordz0_right = i-15;
+                break;
+            end
+        end
+        for (int j = 23; j >= 16; j=j-1) begin
+            if(ycoordz0[j]) begin
+                ycoordz0_right = j-15;
+                break;
+            end
+        end
+    end
+
+    logic [15:0] xcoord_dividend, ycoord_dividend;
+    logic [15:0] zcoord_divisor_x, zcoord_divisor_y;
+    
+    assign xcoord_dividend = xcoordz0 >> xcoordz0_right;
+    assign zcoord_divisor_x = zcoord >> xcoordz0_right;
+
+    assign ycoord_dividend = ycoordz0 >> ycoordz0_right;
+    assign zcoord_divisor_y = zcoord >> ycoordz0_right;
+
     divider3 #(.WIDTH(16)) xcoord_divider (
         .clk(clk),
         .rst(rst),
-        .dividend_in(xcoordz0),
-        .divisor_in(zcoord),
+        .dividend_in(xcoord_dividend),
+        .divisor_in(zcoord_divisor_x),
         .data_valid_in(division_input_valid),
         .quotient_out(x_division_unsigned),
         .remainder_out(),
@@ -95,8 +124,8 @@ module ddd_projector #(
     divider3 #(.WIDTH(16)) ycoord_divider (
         .clk(clk),
         .rst(rst),
-        .dividend_in(ycoordz0),
-        .divisor_in(zcoord),
+        .dividend_in(ycoord_dividend),
+        .divisor_in(zcoord_divisor_y),
         .data_valid_in(division_input_valid),
         .quotient_out(y_division_unsigned),
         .remainder_out(),
@@ -126,7 +155,7 @@ module ddd_projector #(
     logic signed [15:0] ax, ay, az, bx, by, bz;
     logic [1:0] new_triangle_state; // cycles since new triangle
 
-    logic signed [19:0] cx_raw, cy_raw, cz_raw; // don't need 32 bits for this, x y coords are usually kinda smol
+    logic signed [19:0] cx_raw, cy_raw, cz_raw, cx_raw_1, cy_raw_1, cz_raw_1; // don't need 32 bits for this, x y coords are usually kinda smol
 
     logic [4:0] logcx, logcy, logcz;
     log2 xlog (
@@ -145,12 +174,15 @@ module ddd_projector #(
         .e(logcz)
     );
     logic [4:0] big_log;
-    assign big_log = (logcx > logcz && logcx > logcy) ? logcx : ((logcy > logcz) ? logcy : logcz);
+    // assign big_log = (logcx > logcz && logcx > logcy) ? logcx : ((logcy > logcz) ? logcy : logcz);
 
     logic [4:0] cshift;
     assign cshift = (big_log > 7) ? big_log - 7 : 0;
 
     logic signed [7:0] cx, cy, cz;
+
+    logic signed [23:0] p_x, p_y, p_z;
+    logic [23:0] c_int;
 
     logic signed [23:0] p;
     logic [23:0] c;
@@ -167,7 +199,7 @@ module ddd_projector #(
     assign cy_out = pc_out[15:8];
     assign cz_out = pc_out[7:0];
 
-    pipeline #(.WIDTH(48), .STAGES_NEEDED(12)) pc_pipeline (
+    pipeline #(.WIDTH(48), .STAGES_NEEDED(10)) pc_pipeline (
         .clk(clk),
         .in(pc),
         .out(pc_out)
@@ -208,12 +240,22 @@ module ddd_projector #(
         cy_raw <= (az * bx - ax * bz) >>> 4;
         cz_raw <= (ax * by - ay * bx) >>> 4;
 
-        cx <= cx_raw >>> cshift;
-        cy <= cy_raw >>> cshift;
-        cz <= cz_raw >>> cshift;
+        cx_raw_1 <= cx_raw;
+        cy_raw_1 <= cy_raw;
+        cz_raw_1 <= cz_raw;
+        big_log <= (logcx > logcz && logcx > logcy) ? logcx : ((logcy > logcz) ? logcy : logcz);
 
-        p <= cx * v1x_1 + cy * v1y_1 + cz * v1z_1;
-        c <= {cx, cy, cz};
+        cx <= cx_raw_1 >>> cshift;
+        cy <= cy_raw_1 >>> cshift;
+        cz <= cz_raw_1 >>> cshift;
+
+        p_x <= cx * v1x_1;
+        p_y <= cy * v1y_1;
+        p_z <= cz * v1z_1;
+        c_int <= {cx, cy, cz};
+
+        p <= p_x + p_y + p_z;
+        c <= c_int;
 
         new_triangle_buffer[0] <= new_triangle_in;
 

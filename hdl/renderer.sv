@@ -189,19 +189,19 @@ module renderer(
         end
     end
 
-    pipeline #(.WIDTH(11), .STAGES_NEEDED(2)) h_count_pl (
+    pipeline #(.WIDTH(11), .STAGES_NEEDED(3)) h_count_pl (
         .clk(clk),
         .in(h_count_state),
         .out(h_count)
     );
 
-    pipeline #(.WIDTH(10), .STAGES_NEEDED(2)) v_count_pl (
+    pipeline #(.WIDTH(10), .STAGES_NEEDED(3)) v_count_pl (
         .clk(clk),
         .in(v_count_state),
         .out(v_count)
     );
 
-    pipeline #(.WIDTH(1), .STAGES_NEEDED(2)) valid_pl (
+    pipeline #(.WIDTH(1), .STAGES_NEEDED(3)) valid_pl (
         .clk(clk),
         .in(valid_state),
         .out(valid)
@@ -214,14 +214,43 @@ module renderer(
         .out(h_count_div_80_pl)
     );
 
-    assign last = (h_count == 1279) && (v_count == 719);
-    assign data = tile_bram_pixel_out_data[h_count_div_80_pl][31:16];
 
-    logic piss_counter; // can only output data every 2 cycles cuz dram is a pissbaby
+    logic [31:0] data_out_raw;
+    assign data_out_raw = tile_bram_pixel_out_data[h_count_div_80_pl];
+
+    logic [6:0] haze;
+    assign haze = (data_out_raw[15:0] >= 960) ? 127 : ((data_out_raw[15:0] < 832) ? 0 : (data_out_raw[15:0] - 832));
+
+    logic [4:0] r_raw;
+    logic [5:0] g_raw;
+    logic [4:0] b_raw;
+
+    assign r_raw = data_out_raw[31:27];
+    assign g_raw = data_out_raw[26:21];
+    assign b_raw = data_out_raw[20:16];
+
+    logic [6:0] r_unclip, g_unclip, b_unclip;
+    assign r_unclip = (haze >> 2) + r_raw;
+    assign g_unclip = (haze >> 1) + g_raw;
+    assign b_unclip = (haze >> 2) + b_raw;
+
+    logic [4:0] r_final;
+    logic [5:0] g_final;
+    logic [4:0] b_final;
+
+    assign r_final = r_unclip >= 32 ? 31 : r_unclip;
+    assign g_final = g_unclip >= 64 ? 63 : g_unclip;
+    assign b_final = b_unclip >= 32 ? 31 : b_unclip;
+
+    assign last = (h_count == 1279) && (v_count == 719);
+
+    logic dram_output_counter; // can only output data every 2 cycles cuz dram is a babybaby
 
     always_ff @( posedge clk ) begin
         bram_triangle_in_valid <= 0;
         done <= 0;
+        
+        data <= {r_final, g_final, b_final};
 
         if(rst) begin
             state <= RST;
@@ -231,7 +260,7 @@ module renderer(
             state <= IDLE;
             num_triangles <= 0;
             valid_state <= 0;
-            piss_counter <= 0;
+            dram_output_counter <= 0;
         end else if (state == IDLE) begin
             bram_triangle_in_addr <= num_triangles;
             bram_triangle_in_valid <= triangle_valid;
@@ -260,9 +289,9 @@ module renderer(
             end
         end else if(state == WRITING_TO_DRAM) begin
             
-            piss_counter <= !piss_counter;
+            dram_output_counter <= !dram_output_counter;
 
-            if(piss_counter == 0) begin 
+            if(dram_output_counter == 0) begin 
 
                 valid_state <= 1;
             

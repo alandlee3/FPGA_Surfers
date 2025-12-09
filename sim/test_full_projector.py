@@ -21,7 +21,7 @@ def convert_to_triangle(color, p1x, p1y, p2x, p2y, p3x, p3y, total_depth):
 def convert_to_obstacle(type, lane, depth):
     return lane * (2**11) + type * (2**13) + depth
 
-OBSTACLES = [ (4, 0, 128) ]
+OBSTACLES = [ (4, 0, 128), (4, 1, 256), (4,1,128), (1, 2, 256) ]
 
 @cocotb.test()
 async def test_a(dut):
