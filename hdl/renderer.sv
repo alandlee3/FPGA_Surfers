@@ -15,7 +15,7 @@ module renderer(
     // when active is LOW, you can input triangles into this module
     input wire active,
     
-    input wire [127:0] triangle,
+    input wire [159:0] triangle,
     input wire triangle_valid,
 
     output logic [10:0] h_count, // not outputted in order!!!
@@ -39,17 +39,17 @@ module renderer(
     logic [wMAX_TRIANGLES-1:0] num_triangles;
 
     logic [wMAX_TRIANGLES-1:0] bram_triangle_in_addr;
-    logic [127:0] bram_triangle_in_data;
+    logic [159:0] bram_triangle_in_data;
     logic bram_triangle_in_valid;
 
     logic [wMAX_TRIANGLES-1:0] bram_triangle_out_addr [N_WAY_PARALLEL-1:0];
-    logic [127:0] bram_triangle_out_data [N_WAY_PARALLEL-1:0];
+    logic [159:0] bram_triangle_out_data [N_WAY_PARALLEL-1:0];
 
     generate
         genvar i;
         for (i = 0; i < N_WAY_PARALLEL; i=i+1) begin
             xilinx_true_dual_port_read_first_2_clock_ram #(
-                .RAM_WIDTH(128), //each triangle is 128 bits
+                .RAM_WIDTH(160), //each triangle is 160 bits
                 .RAM_DEPTH(MAX_TRIANGLES))
             triangle_bram (
                 .addra(bram_triangle_in_addr), // a is for writing in triangles!
@@ -61,7 +61,7 @@ module renderer(
                 .rsta(rst),
                 .douta(), //never read from this side
                 .addrb(bram_triangle_out_addr[i]),// triangle lookup
-                .dinb(128'b0),
+                .dinb(160'b0),
                 .clkb(clk),
                 .web(1'b0),
                 .enb(1'b1),

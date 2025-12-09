@@ -226,7 +226,7 @@ module top_level(
     logic render_active;
     logic render_done;
 
-    logic [127:0] render_triangle;
+    logic [159:0] render_triangle;
     logic render_triangle_valid;
 
     renderer renderer_inst (

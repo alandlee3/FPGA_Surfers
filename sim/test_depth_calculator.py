@@ -22,69 +22,36 @@ async def test_a(dut):
     cocotb.start_soon(Clock(dut.clk, CLK_PERIOD, units="ns").start())
     # cocotb.start_soon(Clock(dut.camera_pclk, PCLK_PERIOD, units="ns").start())
 
-    dut._log.info("Holding reset...")
-    dut.rst.value = 1
-
     ## test some pixel insertions
     await ClockCycles(dut.clk, 3)
-    dut.rst.value = 0
 
-    # input wire clk,
-    # input wire rst,
-    # input wire [47:0] vertex,
-    # input wire [15:0] color,
-    # input wire new_triangle_in, // high once at beginning of triangle
-    # input wire done_in, // done feeding all triangles
-    # output logic [127:0] triangle, // color|p1x|p1y|p2x|p2y|p3x|p3y|'depth'
-    # output logic new_triangle_out,
-    # output logic done_out,
+    """ 
+    input wire clk,
+    input wire [159:0] triangle, // color|p1x|p1y|p2x|p2y|p3x|p3y|P(24)|nx(8)|ny(8)|nz(8)
+    input wire [10:0] x_coord,
+    input wire [9:0] y_coord,
+    output wire [15:0] depth,
 
-    # (-640,-360,256), (-640,-350,256), (640, -350, 1000)
-    # (640,-360,256), (640,-350,256), (-640, -350, 1000)
-
-    def convert_to_vertex(x, y, z):
-        return x * (2**32) + y * (2**16) + z
-
-    def convert_to_triangle(color, p1x, p1y, p2x, p2y, p3x, p3y, total_depth):
-        return color * (2**112) + p1x * (2**96) + p1y * (2**80) + p2x * (2**64) + p2y * (2**48) + p3x * (2**32) + p3y * (2**16) + total_depth
+    """
+    
+    # flat triangle at z = 50. Should always output depth 50
+    dut.triangle.value = 0x003f0319023402e6023403b3019b000384000012
+    dut.x_coord.value = 10
+    dut.y_coord.value = 10
 
     await ClockCycles(dut.clk, 1)
-    dut.vertex.value = convert_to_vertex(2**16-640, 2**16-360, 256)
-    dut.color.value = 63
-    dut.new_triangle_in.value = 1
-    dut.done_in.value = 0
-    # ff0b003a009c
-    # 00f5003a0064
 
+    dut.triangle.value = 0x003f0319023402e6023403b3019b000384000012
+    dut.x_coord.value = 1279
+    dut.y_coord.value = 719
+    
     await ClockCycles(dut.clk, 1)
-    dut.vertex.value = convert_to_vertex(2**16-640, 2**16-350, 256)
-    dut.color.value = 63
-    dut.new_triangle_in.value = 0
-    dut.done_in.value = 0
 
-    await ClockCycles(dut.clk, 1)
-    dut.vertex.value = convert_to_vertex(640, 2**16-350, 1000)
-    dut.color.value = 63
-    dut.new_triangle_in.value = 0
-    dut.done_in.value = 0
+    dut.triangle.value = 0x003f027f016702800168027f0167ffe124b1b1b1
+    dut.x_coord.value = 100
+    dut.y_coord.value = 100
 
-    await ClockCycles(dut.clk, 1)
-    dut.vertex.value = convert_to_vertex(640, 2**16-360, 256)
-    dut.color.value = 2**15
-    dut.new_triangle_in.value = 1
-    dut.done_in.value = 0
-
-    await ClockCycles(dut.clk, 1)
-    dut.vertex.value = convert_to_vertex(640, 2**16-350, 256)
-    dut.color.value = 2**15
-    dut.new_triangle_in.value = 0
-    dut.done_in.value = 0
-
-    await ClockCycles(dut.clk, 1)
-    dut.vertex.value = convert_to_vertex(2**16-640, 2**16-350, 1000)
-    dut.color.value = 2**15
-    dut.new_triangle_in.value = 0
-    dut.done_in.value = 0
+    await ClockCycles(dut.clk, 100)
 
 
     # # wait 2 clock cycles then start doing a new triangle, with negative coordinates
@@ -109,20 +76,20 @@ async def test_a(dut):
     await ClockCycles(dut.clk, 20)
 
 
-def ddd_projector_runner():
+def depth_calculator_runner():
     """3D Projector Tester."""
     hdl_toplevel_lang = os.getenv("HDL_TOPLEVEL_LANG", "verilog")
     # sim = os.getenv("SIM", "icarus")
     sim = os.getenv("SIM","vivado")
     proj_path = Path(__file__).resolve().parent.parent
     sys.path.append(str(proj_path / "sim" / "model"))
-    sources = [proj_path / "hdl" / "ddd_projector.sv", proj_path / "hdl" / "pipeline.sv", proj_path / "hdl" / "divider3.sv", proj_path / "hdl" / "log2.sv"]
+    sources = [proj_path / "hdl" / "depth_calculator.sv", proj_path / "hdl" / "pipeline.sv", proj_path / "hdl" / "divider3.sv", proj_path / "hdl" / "small_multiplier.sv"]
     build_test_args = ["-Wall"]
     #values for parameters defined earlier in the code.
     # parameters = { 'KERNEL_DIMENSION': 3, 'K_SELECT': 2} # sharpen for now
  
     sys.path.append(str(proj_path / "sim"))
-    hdl_toplevel = "ddd_projector"
+    hdl_toplevel = "depth_calculator"
     runner = get_runner(sim)
     runner.build(
         sources=sources,
@@ -142,4 +109,4 @@ def ddd_projector_runner():
     )
 
 if __name__ == '__main__':
-    ddd_projector_runner()
+    depth_calculator_runner()

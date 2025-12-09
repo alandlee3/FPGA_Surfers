@@ -5,13 +5,12 @@ module pixel_calculator (
         input wire rst,
         input wire [10:0] xcoord_in,
         input wire [9:0] ycoord_in,
-        input wire [31:0] pixel_data_in, // top 16 bits color, bottom 16 bits depth
-        input wire [127:0] triangle, // color|p1x|p1y|p2x|p2y|p3x|p3y|'depth', depth unsigned
+        input wire [159:0] triangle, // color|p1x|p1y|p2x|p2y|p3x|p3y|P(24)|nx(8)|ny(8)|nz(8)
         input wire pixel_in_valid,
         output logic [10:0] xcoord_out,
         output logic [9:0] ycoord_out,
-        output logic [31:0] pixel_data_out, // top 16 bits color, bottom 16 bits depth
-        output logic pixel_out_valid
+        output logic pixel_out_valid,
+        output logic pixel_inside
     );
 
     // 1 stage pipeline
@@ -19,23 +18,23 @@ module pixel_calculator (
     // depth is unsigned, '0' corresponds to front of the screen
 
     // extract color and depth separately from pixel
-    logic [15:0] color_data_in;
-    logic [15:0] depth_data_in;
-    assign color_data_in = pixel_data_in[31:16];
-    assign depth_data_in = pixel_data_in[15:0];
+    // logic [15:0] color_data_in;
+    // logic [15:0] depth_data_in;
+    // assign color_data_in = pixel_data_in[31:16];
+    // assign depth_data_in = pixel_data_in[15:0];
 
     // extract triangle info
-    logic [15:0] triangle_color;
+    // logic [15:0] triangle_color;
     logic signed [15:0] p1x, p1y, p2x, p2y, p3x, p3y;
-    logic [15:0] total_depth;
-    assign triangle_color = triangle[127:112];
-    assign p1x = $signed(triangle[111:96]);
-    assign p1y = $signed(triangle[95:80]);
-    assign p2x = $signed(triangle[79:64]);
-    assign p2y = $signed(triangle[63:48]);
-    assign p3x = $signed(triangle[47:32]);
-    assign p3y = $signed(triangle[31:16]);
-    assign total_depth = triangle[15:0];
+    // logic [15:0] total_depth;
+    // assign triangle_color = triangle[127:112];
+    assign p1x = $signed(triangle[143:128]);
+    assign p1y = $signed(triangle[127:112]);
+    assign p2x = $signed(triangle[111:96]);
+    assign p2y = $signed(triangle[95:80]);
+    assign p3x = $signed(triangle[79:64]);
+    assign p3y = $signed(triangle[63:48]);
+    // assign total_depth = triangle[15:0];
 
     // compute vector components for each side vector
     logic signed [1:0][15:0] ab, bc, ca;
@@ -59,7 +58,7 @@ module pixel_calculator (
     logic signed [31:0] c11, c12, c21, c22, c31, c32;
 
     // additional buffers for combinational logic
-    logic [15:0] total_depth_buff, color_data_buff, depth_data_buff, triangle_color_buff;
+    // logic [15:0] total_depth_buff, color_data_buff, depth_data_buff, triangle_color_buff;
 
     // ignore coloring if triangle is degenerate (vertically)
     logic points_form_vertical_line;
@@ -67,14 +66,18 @@ module pixel_calculator (
     // check if pixel is in triangle AND triangle is closer to screen than last pixel triangle
     always_comb begin
         if (!rst) begin
-            if ((total_depth_buff < depth_data_buff) && (!points_form_vertical_line) && (($signed(c11 - c12) >= 0 && $signed(c21 - c22) >= 0 && $signed(c31 - c32) >= 0) || ($signed(c11 - c12) <= 0 && $signed(c21 - c22) <= 0 && $signed(c31 - c32) <= 0))) begin
-                pixel_data_out = {triangle_color_buff, total_depth_buff};
+            if ( (!points_form_vertical_line) && (($signed(c11 - c12) >= 0 && $signed(c21 - c22) >= 0 && $signed(c31 - c32) >= 0) || ($signed(c11 - c12) <= 0 && $signed(c21 - c22) <= 0 && $signed(c31 - c32) <= 0)) ) begin
+                // pixel_data_out = {triangle_color_buff, total_depth_buff};
+                pixel_inside = 1;
             end else begin
-                pixel_data_out = {color_data_buff, depth_data_buff};
+                // pixel_data_out = {color_data_buff, depth_data_buff};
+                pixel_inside = 0;
             end
             points_form_vertical_line = (p1x == p2x) && (p2x == p3x);
         end else begin
-            pixel_data_out = 0;
+            // pixel_data_out = 0;
+            pixel_inside = 0;
+            points_form_vertical_line = 0;
         end
     end
 
@@ -88,10 +91,10 @@ module pixel_calculator (
             pixel_out_valid <= pixel_in_valid;
             ycoord_out <= ycoord_in;
             xcoord_out <= xcoord_in;
-            total_depth_buff <= total_depth;
-            color_data_buff <= color_data_in;
-            depth_data_buff <= depth_data_in;
-            triangle_color_buff <= triangle_color;
+            // total_depth_buff <= total_depth;
+            // color_data_buff <= color_data_in;
+            // depth_data_buff <= depth_data_in;
+            // triangle_color_buff <= triangle_color;
 
             // multiplications for cross products
             c11 <= $signed(ab[0]) * $signed(ap[1]);

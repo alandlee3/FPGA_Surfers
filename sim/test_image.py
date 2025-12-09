@@ -1,10 +1,11 @@
 import png
 
-with open("sim_build/test_renderer_list.txt", "r") as file:
+with open("sim_build/test_image_list.txt", "r") as file:
     img = eval(file.read())
     
 def rgb(num):
-    
+    num //= 2**16
+
     b = (num % 32) * 8
     num //= 32
     g = (num % 64) * 4
@@ -15,13 +16,13 @@ def rgb(num):
 print(rgb(65280))
 
 def create_png(tile):
-    width = 1280
-    height = 180
+    width = 80
+    height = 10
     img = []
     for y in range(height):
         row = ()
         for x in range(width):
-            row = row + rgb( tile[y][x] )
+            row = row + rgb( tile[y * 80 + x] )
         img.append(row)
     with open('result.png', 'wb') as f:
         w = png.Writer(width, height, greyscale=False)
