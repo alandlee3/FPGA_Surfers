@@ -1,0 +1,109 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+---------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.1 (lin64) Build 6140274 Wed May 21 22:58:25 MDT 2025
+| Date         : Wed Dec 10 02:10:04 2025
+| Host         : eecs-digital-15 running 64-bit Ubuntu 24.04.3 LTS
+| Command      : report_timing -file obj/post_synth_timing.rpt
+| Design       : top_level
+| Device       : 7s50-csga324
+| Speed File   : -1  PRODUCTION 1.23 2018-06-13
+| Design State : Synthesized
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+Timing Report
+
+Slack (MET) :             1.105ns  (required time - arrival time)
+  Source:                 full_projector_inst/tcreator_inst/vertex_z_reg[5]/C
+                            (rising edge-triggered cell FDRE clocked by clk_controller_clk_wiz_0  {rise@0.000ns fall@6.000ns period=12.000ns})
+  Destination:            full_projector_inst/ddd_inst/ycoord_divider/p_reg[0][10]/R
+                            (rising edge-triggered cell FDRE clocked by clk_controller_clk_wiz_0  {rise@0.000ns fall@6.000ns period=12.000ns})
+  Path Group:             clk_controller_clk_wiz_0
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            12.000ns  (clk_controller_clk_wiz_0 rise@12.000ns - clk_controller_clk_wiz_0 rise@0.000ns)
+  Data Path Delay:        10.117ns  (logic 4.248ns (41.989%)  route 5.869ns (58.011%))
+  Logic Levels:           13  (CARRY4=6 LUT2=1 LUT3=1 LUT5=3 LUT6=2)
+  Clock Path Skew:        -0.145ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    -2.063ns = ( 9.937 - 12.000 ) 
+    Source Clock Delay      (SCD):    -1.388ns
+    Clock Pessimism Removal (CPR):    0.530ns
+  Clock Uncertainty:      0.076ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.134ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk_controller_clk_wiz_0 rise edge)
+                                                      0.000     0.000 r  
+    N15                                               0.000     0.000 r  clk_100mhz (IN)
+                         net (fo=0)                   0.000     0.000    lcw/clk_in1
+    N15                  IBUF (Prop_ibuf_I_O)         1.440     1.440 r  lcw/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.584     2.024    lcw/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -5.108    -3.083 r  lcw/mmcm_adv_inst/CLKOUT0
+                         net (fo=1, unplaced)         0.800    -2.284    lcw/clk_controller_clk_wiz_0
+                         BUFG (Prop_bufg_I_O)         0.096    -2.188 r  lcw/clkout1_buf/O
+                         net (fo=25381, unplaced)     0.800    -1.388    full_projector_inst/tcreator_inst/clk_controller
+                         FDRE                                         r  full_projector_inst/tcreator_inst/vertex_z_reg[5]/C
+  -------------------------------------------------------------------    -------------------
+                         FDRE (Prop_fdre_C_Q)         0.456    -0.932 f  full_projector_inst/tcreator_inst/vertex_z_reg[5]/Q
+                         net (fo=5, unplaced)         0.498    -0.434    full_projector_inst/tcreator_inst/vertex_z_reg_n_0_[5]
+                         LUT2 (Prop_lut2_I0_O)        0.295    -0.139 r  full_projector_inst/tcreator_inst/vertex2_carry_i_4/O
+                         net (fo=1, unplaced)         0.000    -0.139    full_projector_inst/tcreator_inst/vertex2_carry_i_4_n_0
+                         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.533     0.394 r  full_projector_inst/tcreator_inst/vertex2_carry/CO[3]
+                         net (fo=1, unplaced)         0.009     0.403    full_projector_inst/tcreator_inst/vertex2_carry_n_0
+                         CARRY4 (Prop_carry4_CI_CO[1])
+                                                      0.179     0.582 r  full_projector_inst/tcreator_inst/vertex2_carry__0/CO[1]
+                         net (fo=63, unplaced)        0.400     0.982    full_projector_inst/tcreator_inst/vertex2
+                         LUT3 (Prop_lut3_I0_O)        0.332     1.314 r  full_projector_inst/tcreator_inst/divisor[0][3]_i_6/O
+                         net (fo=1, unplaced)         0.333     1.647    full_projector_inst/tcreator_inst/divisor[0][3]_i_6_n_0
+                         CARRY4 (Prop_carry4_CYINIT_CO[3])
+                                                      0.595     2.242 r  full_projector_inst/tcreator_inst/divisor_reg[0][3]_i_5/CO[3]
+                         net (fo=1, unplaced)         0.009     2.251    full_projector_inst/tcreator_inst/divisor_reg[0][3]_i_5_n_0
+                         CARRY4 (Prop_carry4_CI_O[1])
+                                                      0.337     2.588 f  full_projector_inst/tcreator_inst/divisor_reg[0][15]_i_16/O[1]
+                         net (fo=1, unplaced)         0.312     2.900    full_projector_inst/tcreator_inst/ddd_inst/zcoord0[6]
+                         LUT6 (Prop_lut6_I0_O)        0.306     3.206 f  full_projector_inst/tcreator_inst/divisor[0][0]_i_4__15/O
+                         net (fo=4, unplaced)         0.926     4.132    full_projector_inst/tcreator_inst/divisor[0][0]_i_4__15_n_0
+                         LUT5 (Prop_lut5_I0_O)        0.124     4.256 f  full_projector_inst/tcreator_inst/divisor[0][0]_i_3__15/O
+                         net (fo=6, unplaced)         0.481     4.737    full_projector_inst/tcreator_inst/vertex_z_reg[12]_0
+                         LUT5 (Prop_lut5_I4_O)        0.124     4.861 f  full_projector_inst/tcreator_inst/p[0][3]_i_7/O
+                         net (fo=3, unplaced)         1.129     5.990    full_projector_inst/tcreator_inst/p[0][3]_i_7_n_0
+                         LUT5 (Prop_lut5_I0_O)        0.150     6.140 r  full_projector_inst/tcreator_inst/dividend[0][0]_i_7/O
+                         net (fo=1, unplaced)         0.000     6.140    full_projector_inst/tcreator_inst/dividend[0][0]_i_7_n_0
+                         CARRY4 (Prop_carry4_DI[0]_CO[3])
+                                                      0.576     6.716 r  full_projector_inst/tcreator_inst/dividend_reg[0][0]_i_2__0/CO[3]
+                         net (fo=1, unplaced)         0.009     6.725    full_projector_inst/tcreator_inst/dividend_reg[0][0]_i_2__0_n_0
+                         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117     6.842 f  full_projector_inst/tcreator_inst/dividend_reg[0][0]_i_1__0/CO[3]
+                         net (fo=3, unplaced)         0.936     7.778    full_projector_inst/ddd_inst/ycoord_divider/D[0]
+                         LUT6 (Prop_lut6_I5_O)        0.124     7.902 r  full_projector_inst/ddd_inst/ycoord_divider/p[0][14]_i_1__15/O
+                         net (fo=14, unplaced)        0.827     8.729    full_projector_inst/ddd_inst/ycoord_divider/p[0][14]_i_1__15_n_0
+                         FDRE                                         r  full_projector_inst/ddd_inst/ycoord_divider/p_reg[0][10]/R
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk_controller_clk_wiz_0 rise edge)
+                                                     12.000    12.000 r  
+    N15                                               0.000    12.000 r  clk_100mhz (IN)
+                         net (fo=0)                   0.000    12.000    lcw/clk_in1
+    N15                  IBUF (Prop_ibuf_I_O)         1.370    13.370 r  lcw/clkin1_ibufg/O
+                         net (fo=1, unplaced)         0.439    13.809    lcw/clk_in1_clk_wiz_0
+                         MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -5.378     8.431 r  lcw/mmcm_adv_inst/CLKOUT0
+                         net (fo=1, unplaced)         0.760     9.191    lcw/clk_controller_clk_wiz_0
+                         BUFG (Prop_bufg_I_O)         0.091     9.282 r  lcw/clkout1_buf/O
+                         net (fo=25381, unplaced)     0.655     9.937    full_projector_inst/ddd_inst/ycoord_divider/clk_controller
+                         FDRE                                         r  full_projector_inst/ddd_inst/ycoord_divider/p_reg[0][10]/C
+                         clock pessimism              0.530    10.467    
+                         clock uncertainty           -0.076    10.391    
+                         FDRE (Setup_fdre_C_R)       -0.557     9.834    full_projector_inst/ddd_inst/ycoord_divider/p_reg[0][10]
+  -------------------------------------------------------------------
+                         required time                          9.834    
+                         arrival time                          -8.729    
+  -------------------------------------------------------------------
+                         slack                                  1.105    
+
+
+
+

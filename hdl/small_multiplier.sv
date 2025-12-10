@@ -18,11 +18,10 @@ module small_multiplier (
     logic signed [18:0] a19_r [7:0];
 
     always_ff @(posedge clk) begin
-        // Stage 0 inputs
         a_r[0] <= signed_11;
         b_r[0] <= signed_8;
 
-        // Shift pipeline
+        // shift pipeline
         for (int i = 1; i < 8; i=i+1) begin
             a_r[i] <= a_r[i-1];
             b_r[i] <= b_r[i-1];
@@ -45,17 +44,14 @@ module small_multiplier (
             sum[0] <= 19'sd0;
     end
 
-    genvar i;
-    generate
-        for (i = 1; i < 7; i=i+1) begin : stages
-            always_ff @(posedge clk) begin
-                if (b_r[i][i])
-                    sum[i] <= sum[i-1] + (a19_r[i] <<< i);
-                else
-                    sum[i] <= sum[i-1];
-            end
+    always_ff @(posedge clk) begin
+        for (int i = 1; i < 7; i=i+1) begin
+            if (b_r[i][i])
+                sum[i] <= sum[i-1] + (a19_r[i] <<< i);
+            else
+                sum[i] <= sum[i-1];
         end
-    endgenerate
+    end
 
     always_ff @(posedge clk) begin
         if (b_r[7][7])

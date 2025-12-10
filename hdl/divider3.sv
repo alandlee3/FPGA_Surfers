@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
+// 16 stage pipeline
+
 module divider3 #(parameter WIDTH = 16) (
         input wire clk,
         input wire rst,
