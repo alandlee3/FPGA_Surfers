@@ -143,7 +143,7 @@ module obstacle_generator #(
                     // 1/4 probability, using 5j+1:5j
 
                     // don't put barriers right after train cars/ramps
-                    if (rng[5*j+2] == 0 && obstacle_storage[13][j][2] == 0) begin
+                    if (rng[5*j+2] == 0) begin
                         // 1/2 probability, generating a barrier
 
                         if (rng[5*j+4] == 0 && rng[5*j+3] == 0) begin

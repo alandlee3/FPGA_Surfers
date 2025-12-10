@@ -98,7 +98,7 @@ module top_level(
     ///////////////////////////////////////// OBSTACLE GENERATION //////////////////////////////////////////////////////////////////
     // speed dictates entire game pace
     logic [3:0] speed;
-    assign speed = sw[7:4];
+    assign speed = game_over ? 0 : sw[7:4];
     
     logic new_frame;
     logic [15:0] obstacle;

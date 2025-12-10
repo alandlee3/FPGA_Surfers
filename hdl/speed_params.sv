@@ -3,7 +3,7 @@
 
 module speed_params (
     input wire [3:0] speed,
-    output logic [3:0] gravity,
+    output logic [5:0] gravity,
     output logic [7:0] duck_limit,
     output logic [9:0] vertical_jump
 );
@@ -24,7 +24,7 @@ always_comb begin
     end else if (speed == 8) begin
         gravity = 60;
         duck_limit = 16;
-        vertical_jump = 360; 
+        vertical_jump = 820; 
     end else begin
         gravity = 1;
         duck_limit = 128;

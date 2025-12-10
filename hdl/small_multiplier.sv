@@ -11,34 +11,34 @@ module small_multiplier (
 );
 
     // stored multiplicands
-    logic signed [10:0] a_r [0:7];
-    logic signed [7:0]  b_r [0:7];
+    logic signed [10:0] a_r [7:0];
+    logic signed [7:0]  b_r [7:0];
 
     // sign ext a_r
-    logic signed [18:0] a19_r [0:7];
+    logic signed [18:0] a19_r [7:0];
 
-    always @(posedge clk) begin
+    always_ff @(posedge clk) begin
         // Stage 0 inputs
         a_r[0] <= signed_11;
         b_r[0] <= signed_8;
 
         // Shift pipeline
-        for (int i = 1; i < 8; i++) begin
+        for (int i = 1; i < 8; i=i+1) begin
             a_r[i] <= a_r[i-1];
             b_r[i] <= b_r[i-1];
         end
     end
 
     always_comb begin
-        for (int sm_i = 0; sm_i < 8; sm_i++) begin
+        for (int sm_i = 0; sm_i < 8; sm_i=sm_i+1) begin
             // sign-extend 11-bit signed to 19 bits
             a19_r[sm_i] = { {8{a_r[sm_i][10]}}, a_r[sm_i] };
         end
     end
 
-    logic signed [18:0] sum [0:7];
+    logic signed [18:0] sum [7:0];
 
-    always @(posedge clk) begin
+    always_ff @(posedge clk) begin
         if (b_r[0][0])
             sum[0] <= a19_r[0];
         else
@@ -47,8 +47,8 @@ module small_multiplier (
 
     genvar i;
     generate
-        for (i = 1; i < 7; i++) begin : stages
-            always @(posedge clk) begin
+        for (i = 1; i < 7; i=i+1) begin : stages
+            always_ff @(posedge clk) begin
                 if (b_r[i][i])
                     sum[i] <= sum[i-1] + (a19_r[i] <<< i);
                 else
@@ -57,7 +57,7 @@ module small_multiplier (
         end
     endgenerate
 
-    always @(posedge clk) begin
+    always_ff @(posedge clk) begin
         if (b_r[7][7])
             sum[7] <= sum[6] - (a19_r[7] <<< 7);
         else

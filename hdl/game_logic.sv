@@ -59,8 +59,8 @@ module game_logic #(
     assign player_top = ducking ? ($signed(player_height) + 16) : ($signed(player_height) + 32);
 
     always_comb begin
-        if (airborne || vertical_velocity_128ths - $signed(gravity) > 0) begin
-            new_vertical_velocity_128ths = vertical_velocity_128ths - $signed(gravity);
+        if (airborne || vertical_velocity_128ths - gravity > 0) begin
+            new_vertical_velocity_128ths = vertical_velocity_128ths - gravity;
         end else begin
             new_vertical_velocity_128ths = 0;
         end
@@ -153,11 +153,12 @@ module game_logic #(
                 end
 
                 // lane changes
-                // TODO: kill player if they try to go off the 3 lanes
-                if (left && player_lane >= 1) begin
-                    player_lane <= player_lane - 1;
-                end else if (right && player_lane <= 1) begin
-                    player_lane <= player_lane + 1;
+                if (left) begin
+                    if (player_lane >= 1) player_lane <= player_lane - 1;
+                    else game_over <= 1;
+                end else if (right) begin
+                    if (player_lane <= 1) player_lane <= player_lane + 1;
+                    else game_over <= 1;
                 end
 
                 // AIRBORNE AND DUCKING
