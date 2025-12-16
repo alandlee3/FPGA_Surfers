@@ -9,7 +9,7 @@ You can either build the project or use our build, which is in `/builds/final/fi
 ## Critical Reception
 Critically acclaimed FPGA Surfers has been widely regarded as the Greatest Game of All Time.
 
-"This is the Greatest Game of All Time" - Roger Joey Fan (The Greatest FPGA Engineer of All Time)
-"This is the Greatest Game of All Time" - Alan Dong Jin Lee (The Greatest FPGA Aggressive Omega of All Time)
+"This is the Greatest Game of All Time" - Roger Joey Fan (The Greatest FPGA Engineer of All Time)\
+"This is the Greatest Game of All Time" - Alan Dong Jin Lee (The Greatest FPGA Aggressive Omega of All Time)\
 "The fact that you got it looking as good as you did is really, really" - Joe Steinmeyer (The Greatest FPGA Lecturer of All Time)
 
